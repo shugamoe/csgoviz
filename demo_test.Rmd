@@ -1,0 +1,171 @@
+---
+title: "1 Demo Analysis Test"
+author: "Julian McClellan"
+date: "10/27/2019"
+output: html_document
+---
+
+```{r dbcon, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(DBI)
+
+con <- dbConnect(RPostgres::Postgres(), user = "gamevis", password = "gamevis")
+
+events <- dbGetQuery(con, 'select * FROM events')
+entity_props <- as.data.table(
+  dbGetQuery(con, 'select * FROM entity_props')
+)
+```
+
+
+```{r event_types}
+library(ggplot2)
+library(dplyr)
+
+events_by_type <- events %>%
+  group_by(name) %>%
+  summarise(count = n()) %>%
+  arrange(desc(count))
+
+player_hurt <- events %>%
+  filter(name == "player_hurt")
+
+# Better just to View(events_by_type) instead
+events %>%
+  ggplot(aes(x = name)) +
+    geom_histogram(stat = "count")
+```
+
+```{r tick_conversions}
+library(data.table)
+library(jsonlite)
+library(magrittr)
+round.env <- new.env() # Environment storing cached vars for the round
+
+# Events
+events <- as.data.table(dbGetQuery(con, 'select * FROM events'))
+
+events.player_death <- as.data.table(
+  dbGetQuery(con, "
+  SELECT * 
+  FROM events
+  WHERE name = 'player_death'
+  ORDER BY tick
+  ;
+  ")
+)[, # Get the victim and attacker entity IDs for the tick to retrieve information later if needed
+  c("player", "attacker") := parse_json(entities), by = id
+  ] %>%
+  setnames("player", "victim.ent.index") %>%
+  setnames("attacker", "attacker.ent.index")
+
+events.player_spawn <- as.data.table(
+  dbGetQuery(con, "
+  SELECT *
+  FROM events
+  WHERE name = 'player_spawn'
+  ORDER BY tick
+  ;
+             ")
+)[, 
+  c("userid", "teamnum") := parse_json(data), by = id][,# Parse json in data column to actual columns
+    data := NULL] # No longer need data column now
+
+
+# Function that trims events.phase.changes until the first row of the phases is the start of a round
+trim_phases <- function(events.phase.changes){
+  require(data.table)
+  while (events.phase.changes[1, name] != "round_start"){
+    events.phase.changes <- events.phase.changes[-1] 
+  }
+  (events.phase.changes)
+}
+
+# Select from database
+events.phase.changes <- as.data.table(
+  dbGetQuery(con,"
+  SELECT *
+  FROM events
+  WHERE name IN ('round_start', 'round_freeze_end', 'bomb_planted', 'bomb_exploded', 'bomb_defused', 'round_end')
+  ORDER BY tick, name
+  ; ")
+) %>%
+  trim_phases()
+
+events.round_start <- events.phase.changes[name == "round_start"][,round_num := 1:.N][, .(tick, round_num, round_tick = tick)]
+setkey(events.round_start, tick)
+setkey(events.phase.changes, tick)
+
+events.phase.changes <- events.round_start[events.phase.changes, roll=T]
+
+# Phase 1: Buy/freeze time in spawn
+events.phase.1 <- events.phase.changes[name == "round_start"][, .(tick, round_num)][, phase := 1]
+
+# Phase 2: Normal play
+events.phase.2 <- events.phase.changes[name == "round_freeze_end"][, .(tick, round_num)][, phase := 2][,
+ .(tick = min(tick)), by = .(round_num, phase) # There's an extra round_freeze_end in the last round (21) that's the same tick as the round_end that signals the end of the game
+]
+
+# Phase 2.b: Post bomb plant
+events.phase.2.b <- events.phase.changes[name == "bomb_planted"][, .(tick, round_num)][, phase := "2.b"]
+
+# Phase 3: Post-round time (after T or CT win)
+events.phase.3 <- events.phase.changes[name %in% c("round_end")][, .(tick, round_num)][, phase := 3]
+
+## How to determine who won a round and why
+# names.phase.3.data <- names(parse_json(events.phase.3$data[1]))
+# events.phase.3 <- events.phase.3[,
+#   eval(names.phase.3.data) := parse_json(data), by = id 
+# ]
+
+# In the last round, there's no phase 3
+events.phase.3 <- events.phase.3[round_num != max(events.phase.changes$round_num)]
+
+# Combine phases
+events.phases.all <- rbind(events.phase.1, events.phase.2, events.phase.2.b, events.phase.3)
+setkey(events.phases.all, round_num, tick)
+setkey(events.phase.changes, round_num, tick)
+
+# Combine rounds and phases
+events.rounds.phases <- 
+  events.phases.all[events.phase.changes, roll = -Inf][
+    , .(round_tick, phase_tick = tick, 
+        event_tick = tick,
+        round_num, phase
+        )
+    ] %>%
+  na.omit("phase")
+
+# Get first kills of each round
+setkey(events.phase.changes.phases, event_tick)
+setkey(events.player_death, tick)
+setkey(events.player_spawn, tick)
+
+
+names.player_death.data <- names(parse_json(events.player_death[1,data]))
+
+events.player_death <- events.phase.changes.phases[events.player_death, roll = T][,
+       (names.player_death.data) := parse_json(data), by = id][,  # Parse attacker userID as well
+         .(round_tick, phase_tick, event_tick, round_num, phase, name, attacker.userid = attacker, victim.userid = userid, attacker.ent.index, victim.ent.index)        
+       ]
+events.player_spawn <- events.phase.changes.phases[events.player_spawn, roll = T][, .(round_num, userid, teamnum)] %>% na.omit(cols = c("round_num"))
+
+setkey(events.player_spawn, round_num)
+setkey(events.player_death, round_num)
+
+events.player_death <- events.player_death %>%
+  merge(events.player_spawn, by.x = c("attacker.userid", "round_num"), by.y = c("userid", "round_num")) %>% 
+  setnames("teamnum", "attacker.teamnum") %>%
+  merge(events.player_spawn, by.x = c("victim.userid", "round_num"), by.y = c("userid", "round_num"), sort = F) %>%
+  setnames("teamnum", "victim.teamnum")
+setkey(events.player_death, event_tick)
+
+
+events.first.player_death <- events.player_death[, head(.SD, 1), by = round_num][, .(round_tick, phase_tick, event_tick, round_num, phase, name, attacker.userid, attacker.teamnum, attacker.ent.index, victim.userid, victim.teamnum, victim.ent.index)]
+```
+
+```{r player_id}
+events.deaths <- events[name == "player_death"]
+```
+
+
