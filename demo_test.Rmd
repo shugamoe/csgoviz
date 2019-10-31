@@ -6,15 +6,16 @@ output: html_document
 ---
 
 ```{r dbcon, include=FALSE}
+library(data.table)
 knitr::opts_chunk$set(echo = TRUE)
 library(DBI)
 
 con <- dbConnect(RPostgres::Postgres(), user = "gamevis", password = "gamevis")
 
 events <- dbGetQuery(con, 'select * FROM events')
-entity_props <- as.data.table(
-  dbGetQuery(con, 'select * FROM entity_props')
-)
+# entity_props <- as.data.table(
+#   dbGetQuery(con, 'select * FROM entity_props')
+# )
 ```
 
 
