@@ -1,0 +1,32 @@
+{
+  "name": "csgoviz",
+  "version": "1.0.0",
+  "description": "CS:GO Data Visualization and Analysis Project",
+  "main": "index.js",
+  "scripts": {
+    "test": "jasmine"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shugamoe/csgoviz.git"
+  },
+  "author": "Julian McClellan",
+  "license": "GNU",
+  "bugs": {
+    "url": "https://github.com/shugamoe/csgoviz/issues"
+  },
+  "homepage": "https://github.com/shugamoe/csgoviz#readme",
+  "dependencies": {
+    "bluebird": "^3.7.1",
+    "demofile": "^1.0.7",
+    "hltv": "^2.16.3",
+    "rate-limiter-flexible": "^1.1.6"
+  },
+  "devDependencies": {
+    "eslint": "^6.6.0",
+    "jasmine": "^3.5.0"
+  },
+  "optionalDependencies": {
+    "node-fetch": "^2.6.0"
+  }
+}
