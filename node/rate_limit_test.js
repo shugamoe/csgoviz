@@ -1,9 +1,5 @@
 const {RateLimiterMemory, RateLimiterQueue} = require('rate-limiter-flexible');
 const fetch = require('node-fetch');
-function sleep(milliSeconds) {
-  var startTime = new Date().getTime();
-  while (new Date().getTime() < startTime + milliSeconds);
-}
 
 const limiterFlexible = new RateLimiterMemory({
     points: 1,
@@ -13,6 +9,11 @@ const limiterFlexible = new RateLimiterMemory({
 const limiterQueue = new RateLimiterQueue(limiterFlexible, {
     maxQueueSize: 100,
 });
+
+function sleep(milliSeconds) {
+  var startTime = new Date().getTime();
+  while (new Date().getTime() < startTime + milliSeconds);
+}
 
 for(let i = 0; i < 200; i++) {
     console.log("'i' is: %d", i)

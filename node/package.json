@@ -19,7 +19,7 @@
   "dependencies": {
     "bluebird": "^3.7.1",
     "demofile": "^1.0.7",
-    "hltv": "^2.16.3",
+    "hltv": "^2.17.0",
     "rate-limiter-flexible": "^1.1.6"
   },
   "devDependencies": {
