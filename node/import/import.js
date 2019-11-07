@@ -376,7 +376,7 @@ function importDemoFile(path) {
     .then(() => {
       console.log('Closing connection...');
       client.end();
-      pg.end();
+      // pg.end();
     });
 }
 
