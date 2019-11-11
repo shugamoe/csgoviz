@@ -17,10 +17,18 @@
   },
   "homepage": "https://github.com/shugamoe/csgoviz#readme",
   "dependencies": {
+    "async": "^3.1.0",
     "bluebird": "^3.7.1",
     "demofile": "^1.0.7",
+    "fetch": "^1.1.0",
     "hltv": "^2.17.0",
-    "rate-limiter-flexible": "^1.1.6"
+    "pace": "0.0.4",
+    "pg": "^7.12.1",
+    "pg-copy-streams": "^2.2.2",
+    "rate-limiter-flexible": "^1.1.6",
+    "sequelize": "^5.21.2",
+    "unrar": "^0.2.0",
+    "xxhash": "^0.3.0"
   },
   "devDependencies": {
     "eslint": "^6.6.0",

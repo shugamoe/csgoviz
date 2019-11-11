@@ -98,6 +98,14 @@ var Session = db.define('session', {
   tickrate: {type: Sequelize.INTEGER, allowNull: false}
 });
 
+var Match = db.define('match', {
+  title: {type: Sequelize.STRING, allowNull: false},
+  level: {type: Sequelize.STRING, allowNull: false},
+  game: {type: Sequelize.STRING, allowNull: false},
+  data: {type: Sequelize.JSONB},
+  tickrate: {type: Sequelize.INTEGER, allowNull: false}
+});
+
 Session.hasMany(Event, {allowNull: false, onDelete: 'cascade'});
 Session.hasMany(EntityProp, {allowNull: false, onDelete: 'cascade'});
 
