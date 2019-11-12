@@ -34,7 +34,5 @@
     "eslint": "^6.6.0",
     "jasmine": "^3.5.0"
   },
-  "optionalDependencies": {
-    "node-fetch": "^2.6.0"
-  }
+  "optionalDependencies": {}
 }
