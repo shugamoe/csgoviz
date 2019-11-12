@@ -1,6 +1,6 @@
 const fs = require('fs'),
-  Promise = require('bluebird'),
   Unrar = require('unrar')
+var Promise = require('bluebird')
 const { HLTV } = require('hltv')
 const apiConfig = require('hltv').default.config
 const matchType = require('hltv').MatchType
@@ -35,7 +35,7 @@ function gettestData(){
       fs.writeFile('test_getMatchMapStats.txt', to_write, (err) => console.log(err))
 
       sleep(1500)
-      var matchPageID = res.matchPageID
+      var matchPageID = MatchMapStats.matchPageID
       // Keep the round summary data in MatchMapStats to save to DB later
       return Promise.all([HLTV.getMatch({id: matchPageID}), MatchMapStats])
     })
@@ -49,5 +49,5 @@ function gettestData(){
     })
 }
 
-gettestData()
+// gettestData()
 
