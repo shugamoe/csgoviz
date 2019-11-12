@@ -8,9 +8,9 @@ const FetchStream = require('fetch').FetchStream
 const config = require('./config.json')
 const { extractArchive } = require('./utils.js')
 
-var test_getMatchesStats = JSON.parse(fs.readFileSync('test_getMatchesStats.txt', 'utf8'))
-var test_getMatchMapStats = JSON.parse(fs.readFileSync('test_getMatchMapStats.txt', 'utf8'))
-var test_getMatch = JSON.parse(fs.readFileSync('test_getMatch.txt'))
+var test_getMatchesStats = JSON.parse(fs.readFileSync('./test_getMatchesStats.txt', 'utf8'))
+var test_getMatchMapStats = JSON.parse(fs.readFileSync('./test_getMatchMapStats.txt', 'utf8'))
+var test_getMatch = JSON.parse(fs.readFileSync('./test_getMatch.txt'))
 
 function downloadMatch(Match, MatchMapStats){
   var demo_link = Match.demos.filter(demo => demo.name === 'GOTV Demo')[0].link
