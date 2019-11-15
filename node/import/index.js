@@ -1,6 +1,7 @@
 /**
  * Command-line module that imports CSGO demo files into Gamevis.
- *
+ * original file from saul/gamevis
+ * 
  * @module importers/csgo/import
  */
 
@@ -380,12 +381,25 @@ function importDemoFile(path) {
     });
 }
 
+function importDemoWithMeta(path){
+  db.sync()
+    .then(() => {
+      return importDemoFile(path);
+    })
+    .then(() => {
+      console.log('The end.');
+    });
+}
+
 console.log('Synchronising database...');
 
-db.sync()
-  .then(() => {
-    return importDemoFile(process.argv[2]);
-  })
-  .then(() => {
-    console.log('The end.');
-  });
+// Uncomment to use as commandline 'node index.js <rel_path_to_demo>'
+// db.sync()
+  // .then(() => {
+    // return importDemoFile(process.argv[2]);
+  // })
+  // .then(() => {
+    // console.log('The end.');
+  // });
+
+module.exports.importDemo = importDemoWithMeta

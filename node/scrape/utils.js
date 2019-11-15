@@ -1,19 +1,19 @@
-const { unrar } = require('unrar-promise')
+const { unrar, list } = require('unrar-promise')
 var Promise = require('bluebird')
-const tpath = '/home/jcm/matches/2337272/archive.rar'
+const tarchPath = '/home/jcm/matches/2337272/archive.rar'
 
-function extractArchive(path, target_dir){
+function extractArchive(archPath, target_dir){
   return new Promise(async (resolve, reject) => {
-    console.log("Extracting %s", path)
+    console.log("Extracting %s", archPath)
     try {
-      const thing = await unrar(path, target_dir)
-      resolve()
+      await unrar(archPath, target_dir)
+      resolve(list(archPath))
     } catch(err) {
       console.dir(err)
-      resolve()
+      reject(undefined)
     }
   })
 } 
 
 module.exports.extractArchive = extractArchive
-// extractArchive(tpath)
+// extractArchive(tarchPath)

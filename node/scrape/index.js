@@ -4,14 +4,10 @@ const { HLTV } = require('hltv')
 const apiConfig = require('hltv').default.config
 const matchType = require('hltv').MatchType
 const FetchStream = require('fetch').FetchStream
-const fetch = require('node-fetch')
-fetch.Promise = Promise
 const config = require('./config.json')
 const { extractArchive } = require('./utils.js')
+const { importDemo } = require('../import/index.js')
 const { RateLimiterMemory, RateLimiterQueue } = require('rate-limiter-flexible');
-
-const http = require('https')
-
 
 const queryRLM = new RateLimiterMemory({
     points: 1,
@@ -21,11 +17,8 @@ const queryLimiter = new RateLimiterQueue(queryRLM, {
     maxQueueSize: 2,
 })
 
-function sleep(seconds) {
-  var startTime = new Date().getTime();
-  while (new Date().getTime() < startTime + (1000 * seconds));
-}
 
+var orphanMapStats = []
 var concurDL = 0
 async function downloadDay(date_str){
   try {
@@ -69,7 +62,10 @@ async function downloadDay(date_str){
         await snooze(1000)
       }
       while (concurDL >= 2)
-      downloadMatch(Match, MatchMapStats)
+
+        downloadMatch(Match, MatchMapStats).then(fulfilled => {
+          importDemo()
+        })
     } catch (err) {
       console.log(err)
     }
@@ -97,10 +93,11 @@ async function downloadMatch(Match, MatchMapStats){
   return new Promise((resolve, reject) => {
     concurDL += 1
     var out = fs.createWriteStream(out_path, {flags: 'wx'})
-      .on('error', (err) => {
+      .on('error', () => {
         console.log("%d already downloaded or downloading (%s), skipping. . .", Match.id, out_path)
+        orphanMapStats.push(MatchMapStats)
         concurDL -= 1
-        resolve()
+        reject()
       })
       .on('ready', () => {
         console.log("%d starting download. . .", Match.id)
@@ -112,11 +109,13 @@ async function downloadMatch(Match, MatchMapStats){
             console.log("%d archive downloaded", Match.id)
             concurDL -= 1
             try {
-              await extractArchive(out_path, out_dir)
+              var demos = await extractArchive(out_path, out_dir)
             } catch(err) {
               console.dir(err)
             }
-            resolve()
+            resolve({out_dir: out_dir, 
+                     demos: demos ? demos : undefined}
+            )
           })
       })
   })
