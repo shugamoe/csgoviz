@@ -20,6 +20,7 @@ const queryLimiter = new RateLimiterQueue(queryRLM, {
 
 var orphanMapStats = []
 var concurDL = 0
+var curImport = ""
 async function downloadDay(date_str){
   try {
     const remainingTokens = await queryLimiter.removeTokens(1)
@@ -33,10 +34,13 @@ async function downloadDay(date_str){
     console.dir(err)
   }
 
-  for (let i = 0; i < MatchesStats.length; i++){
+  var MatchMapStatsArr = []
+  var MatchArr = []
+  // for (let i = 0; i < MatchesStats.length; i++){
+  for (let i = 0; i < 5; i++){
     try {
-      const remainingTokens = await queryLimiter.removeTokens(1)
-      var MatchMapStats = await HLTV.getMatchMapStats({
+      await queryLimiter.removeTokens(1)
+      MatchMapStatsArr[i] = await HLTV.getMatchMapStats({
         id: MatchesStats[i].id
       })
     } catch (err) {
@@ -45,9 +49,9 @@ async function downloadDay(date_str){
     }
 
     try {
-      const remainingTokens = await queryLimiter.removeTokens(1)
-      var Match = await HLTV.getMatch({
-        id: MatchMapStats.matchPageID
+      await queryLimiter.removeTokens(1)
+      MatchArr[i] = await HLTV.getMatch({
+        id: MatchMapStatsArr[i].matchPageID
       })
     } catch(err) {
       console.log("HLTV.getMatchMapStats error")
@@ -58,14 +62,49 @@ async function downloadDay(date_str){
     try {
       do {
         // Snoozes function without pausing event loop
-        console.log("concurDL: %d", concurDL)
+        // console.log("concurDL: %d", concurDL)
         await snooze(1000)
       }
       while (concurDL >= 2)
 
-        downloadMatch(Match, MatchMapStats).then(fulfilled => {
-          importDemo()
+        downloadMatch(MatchArr[i], MatchMapStatsArr[i]).then(async fulfilled => {
+          console.log(`Importing demos for Match: ${MatchArr[i].id}`)
+          for (let d=0; d < fulfilled.demos.length; d++) {
+            // Is the current MatchMapStats appropriate for the demo?
+            var haveMapStats = fulfilled.demos[d].match(config[MatchMapStatsArr[i].map])
+            console.log(haveMapStats)
+            var importMatchMapStats
+            if (haveMapStats) {
+              importMatchMapStats = MatchMapStatsArr[i]
+            } else { // If not, check orphans
+              var matchingOrphans = orphanMapStats.filter(ms => {
+                var sameMap = fulfilled.demos[d].match(config[ms.map])
+                return ((ms.matchPageID == MatchArr[i].id) && sameMap)
+              })
+              if (matchingOrphans.length == 1) {
+                importMatchMapStats = matchingOrphans[0]
+              } else {
+                console.dir(matchingOrphans)
+                console.dir(orphanMapStats)
+                console.dir(fulfilled)
+                throw new Error("No Orphan found?")
+              }
+            }
+            do {
+              // Snoozes function without pausing event loop
+              await snooze(1000)
+              console.log(`Import for ${MatchArr[i].id}-${fulfilled.demos[d]} waiting. . . curImport = ${curImport}`)
+            }
+            while (curImport)
+
+            curImport = MatchArr[i].id + "|" + fulfilled.demos[d]
+            await importDemo(fulfilled.out_dir + fulfilled.demos[d], importMatchMapStats, MatchArr[i])
+            curImport = ""
+          }
+          // After importing all demos for the match, remove the orphan(s) used.
+          orphanMapStats = orphanMapStats.filter(ms => ms.matchPageID != MatchArr[i].id)
         })
+        .catch(err => console.log(err))
     } catch (err) {
       console.log(err)
     }
@@ -94,10 +133,9 @@ async function downloadMatch(Match, MatchMapStats){
     concurDL += 1
     var out = fs.createWriteStream(out_path, {flags: 'wx'})
       .on('error', () => {
-        console.log("%d already downloaded or downloading (%s), skipping. . .", Match.id, out_path)
         orphanMapStats.push(MatchMapStats)
         concurDL -= 1
-        reject()
+        reject(`${Match.id} already downloaded or downloading (${out_path}), skipping. . .`)
       })
       .on('ready', () => {
         console.log("%d starting download. . .", Match.id)
@@ -114,7 +152,8 @@ async function downloadMatch(Match, MatchMapStats){
               console.dir(err)
             }
             resolve({out_dir: out_dir, 
-                     demos: demos ? demos : undefined}
+              demos: demos ? demos : undefined
+            }
             )
           })
       })

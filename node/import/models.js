@@ -96,14 +96,13 @@ var Session = db.define('session', {
   game: {type: Sequelize.STRING, allowNull: false},
   data: {type: Sequelize.JSONB},
   tickrate: {type: Sequelize.INTEGER, allowNull: false}
+  // mapStatsData: {type: Sequelize.JSONB, allowNull: true}
 });
 
 var Match = db.define('match', {
-  title: {type: Sequelize.STRING, allowNull: false},
-  level: {type: Sequelize.STRING, allowNull: false},
-  game: {type: Sequelize.STRING, allowNull: false},
-  data: {type: Sequelize.JSONB},
-  tickrate: {type: Sequelize.INTEGER, allowNull: false}
+  matchID: {type: Sequelize.INTEGER, allowNull: false, primaryKey: true},
+  date: {type: Sequelize.DATE, allowNull: false},
+  matchPageData: {type: Sequelize.JSONB},
 });
 
 Session.hasMany(Event, {allowNull: false, onDelete: 'cascade'});

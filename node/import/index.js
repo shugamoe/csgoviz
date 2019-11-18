@@ -381,20 +381,19 @@ function importDemoFile(path) {
     });
 }
 
-function importDemoWithMeta(path){
-  db.sync()
-    .then(() => {
-      return importDemoFile(path);
+async function importDemoWithMeta(path, MatchMapStats, Match){
+  return new Promise((resolve, reject) => {
+    db.sync()
+      .then(() => {
+        importDemoFile(path).then(res => resolve(res))
+          .catch(e => reject(e))
+      })
     })
-    .then(() => {
-      console.log('The end.');
-    });
 }
 
-console.log('Synchronising database...');
-
-// Uncomment to use as commandline 'node index.js <rel_path_to_demo>'
-// db.sync()
+// console.log('Synchronising database...');
+//
+// Uncomment to use as commandline 'node index.js <rel_path_to_demo>'k// db.sync()
   // .then(() => {
     // return importDemoFile(process.argv[2]);
   // })
