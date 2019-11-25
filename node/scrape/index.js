@@ -4,9 +4,9 @@ const { HLTV } = require('hltv')
 const apiConfig = require('hltv').default.config
 const matchType = require('hltv').MatchType
 const FetchStream = require('fetch').FetchStream
-const config = require('./config.json')
+const MapDict = require('./maps.json')
 const { extractArchive } = require('./utils.js')
-const { importDemo } = require('../import/index.js')
+const { importDemo, importMatch } = require('../import/index.js')
 const { RateLimiterMemory, RateLimiterQueue } = require('rate-limiter-flexible');
 
 const queryRLM = new RateLimiterMemory({
@@ -19,6 +19,7 @@ const queryLimiter = new RateLimiterQueue(queryRLM, {
 
 
 var orphanMapStats = []
+var problemImports = []
 var concurDL = 0
 var curImport = ""
 async function downloadDay(date_str){
@@ -35,7 +36,7 @@ async function downloadDay(date_str){
   }
 
   var MatchMapStatsArr = []
-  var MatchArr = []
+  var matchArr = []
   // for (let i = 0; i < MatchesStats.length; i++){
   for (let i = 0; i < 5; i++){
     try {
@@ -50,7 +51,7 @@ async function downloadDay(date_str){
 
     try {
       await queryLimiter.removeTokens(1)
-      MatchArr[i] = await HLTV.getMatch({
+      matchArr[i] = await HLTV.getMatch({
         id: MatchMapStatsArr[i].matchPageID
       })
     } catch(err) {
@@ -67,22 +68,34 @@ async function downloadDay(date_str){
       }
       while (concurDL >= 2)
 
-        downloadMatch(MatchArr[i], MatchMapStatsArr[i]).then(async fulfilled => {
-          console.log(`Importing demos for Match: ${MatchArr[i].id}`)
+        downloadMatch(matchArr[i], MatchMapStatsArr[i], MatchesStats[i].id).then(async fulfilled => {
+          console.log(`Importing demos for Match: ${matchArr[i].id}`)
+
+          do {
+            // Snoozes function without pausing event loop
+            await snooze(1000)
+            // console.log(`Import for ${matchArr[i].id}-${fulfilled.demos[d]} waiting. . . curImport = ${curImport}`)
+          }
+          while (curImport)
+          curImport = matchArr[i].id
+          await importMatch(matchArr[i]).then(curImport = "")
           for (let d=0; d < fulfilled.demos.length; d++) {
             // Is the current MatchMapStats appropriate for the demo?
-            var haveMapStats = fulfilled.demos[d].match(config[MatchMapStatsArr[i].map])
+            var haveMapStats = fulfilled.demos[d].match(MapDict[MatchMapStatsArr[i].map])
             console.log(haveMapStats)
             var importMatchMapStats
+            var importMatchMapStatsID
             if (haveMapStats) {
               importMatchMapStats = MatchMapStatsArr[i]
+              importMatchMapStatsID = MatchesStats[i].id
             } else { // If not, check orphans
               var matchingOrphans = orphanMapStats.filter(ms => {
-                var sameMap = fulfilled.demos[d].match(config[ms.map])
-                return ((ms.matchPageID == MatchArr[i].id) && sameMap)
+                var sameMap = fulfilled.demos[d].match(MapDict[ms.json.map])
+                return ((ms.matchPageID == matchArr[i].id) && sameMap)
               })
               if (matchingOrphans.length == 1) {
-                importMatchMapStats = matchingOrphans[0]
+                importMatchMapStats = matchingOrphans[0].json
+                importMatchMapStatsID = matchingOrphans[0].MapStatsID
               } else {
                 console.dir(matchingOrphans)
                 console.dir(orphanMapStats)
@@ -93,18 +106,22 @@ async function downloadDay(date_str){
             do {
               // Snoozes function without pausing event loop
               await snooze(1000)
-              console.log(`Import for ${MatchArr[i].id}-${fulfilled.demos[d]} waiting. . . curImport = ${curImport}`)
+              // console.log(`Import for ${matchArr[i].id}-${fulfilled.demos[d]} waiting. . . curImport = ${curImport}`)
             }
             while (curImport)
 
-            curImport = MatchArr[i].id + "|" + fulfilled.demos[d]
-            await importDemo(fulfilled.out_dir + fulfilled.demos[d], importMatchMapStats, MatchArr[i])
-            curImport = ""
+            curImport = matchArr[i].id + "|" + fulfilled.demos[d]
+            await importDemo(fulfilled.out_dir + fulfilled.demos[d], importMatchMapStats, importMatchMapStatsID, matchArr[i]).then(() => {
+              curImport = ""
+            }).catch((err) => {
+              console.dir("Error importing demo")
+              console.log(err)
+              problemImports.push(matchArr[i])
+            })
           }
           // After importing all demos for the match, remove the orphan(s) used.
-          orphanMapStats = orphanMapStats.filter(ms => ms.matchPageID != MatchArr[i].id)
-        })
-        .catch(err => console.log(err))
+          orphanMapStats = orphanMapStats.filter(ms => ms.json.matchPageID != matchArr[i].id)
+        }).catch(() => '')
     } catch (err) {
       console.log(err)
     }
@@ -117,7 +134,7 @@ setTimeout(function() {
 const snooze = ms => new Promise(resolve => setTimeout(resolve, ms))
 
 
-async function downloadMatch(Match, MatchMapStats){
+async function downloadMatch(Match, MatchMapStats, MatchMapStatsID){
   var demo_link = Match.demos.filter(demo => demo.name === 'GOTV Demo')[0].link
   demo_link = apiConfig.hltvUrl + demo_link
 
@@ -133,7 +150,7 @@ async function downloadMatch(Match, MatchMapStats){
     concurDL += 1
     var out = fs.createWriteStream(out_path, {flags: 'wx'})
       .on('error', () => {
-        orphanMapStats.push(MatchMapStats)
+        orphanMapStats.push({json: MatchMapStats, MapStatsID: MatchMapStatsID})
         concurDL -= 1
         reject(`${Match.id} already downloaded or downloading (${out_path}), skipping. . .`)
       })
@@ -164,4 +181,7 @@ var test_getMatchesStats = JSON.parse(fs.readFileSync('./test_getMatchesStats.tx
 var test_getMatchMapStats = JSON.parse(fs.readFileSync('./test_getMatchMapStats.txt', 'utf8'))
 var test_getMatch = JSON.parse(fs.readFileSync('./test_getMatch.txt'))
 // downloadMatch(test_getMatch, test_getMatchMapStats)
-downloadDay('2019-11-02')
+downloadDay('2019-11-02').then(() => {
+  console.log("Problem imports:")
+  console.log(problemImports)
+})

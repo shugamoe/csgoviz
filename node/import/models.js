@@ -25,7 +25,7 @@ var Event = db.define('event', {
 }, {
   indexes: [
     {
-      fields: ['name', 'session_id']
+      fields: ['name', 'session_mms_id']
     },
     {
       fields: ['data'],
@@ -63,10 +63,10 @@ var EntityProp = db.define('entity_prop', {
 }, {
   indexes: [
     {
-      fields: ['index', 'prop', 'session_id', 'tick']
+      fields: ['index', 'prop', 'session_mms_id', 'tick']
     },
     {
-      fields: ['session_id']
+      fields: ['session_mms_id']
     },
     {
       method: 'BTREE',
@@ -95,14 +95,18 @@ var Session = db.define('session', {
   level: {type: Sequelize.STRING, allowNull: false},
   game: {type: Sequelize.STRING, allowNull: false},
   data: {type: Sequelize.JSONB},
-  tickrate: {type: Sequelize.INTEGER, allowNull: false}
-  // mapStatsData: {type: Sequelize.JSONB, allowNull: true}
+  tickrate: {type: Sequelize.INTEGER, allowNull: false},
+  date: {type: Sequelize.DATE, allowNull: false},
+  mms_data: {type: Sequelize.JSONB, allowNull: true},
+  mms_id: {type: Sequelize.INTEGER, allowNull: false, primaryKey: true},
+  match_id: {type: Sequelize.INTEGER, allowNull: false}
 });
 
 var Match = db.define('match', {
-  matchID: {type: Sequelize.INTEGER, allowNull: false, primaryKey: true},
+  match_id: {type: Sequelize.INTEGER, allowNull: false, primaryKey: true},
   date: {type: Sequelize.DATE, allowNull: false},
-  matchPageData: {type: Sequelize.JSONB},
+  data: {type: Sequelize.JSONB},
+  maps: {type: Sequelize.INTEGER, allowNull: false}
 });
 
 Session.hasMany(Event, {allowNull: false, onDelete: 'cascade'});
@@ -111,5 +115,6 @@ Session.hasMany(EntityProp, {allowNull: false, onDelete: 'cascade'});
 module.exports = {
   Session,
   Event,
-  EntityProp
+  EntityProp,
+  Match
 };

@@ -10,7 +10,7 @@
 var fs = require('fs');
 var assert = require('assert');
 var demofile = require('demofile');
-var pace = require('pace');
+// var pace = require('pace');
 var _ = require('lodash');
 var async = require('async');
 var Promise = require('bluebird');
@@ -29,9 +29,9 @@ var models = require('./models.js');
  * @param {number} session_id - New session ID
  * @param callback
  */
-function importDemoBuffer(client, buffer, session_id, callback) {
+function importDemoBuffer(client, buffer, mms_id, callback) {
   var demo = new demofile.DemoFile();
-  var pace;
+  // var pace;
   var players = new Array(256);
   const ENTITY_UPDATE_TIME_INTERVAL = 0.2; // number of seconds between flushing entity updates
   var tickInterval;
@@ -42,7 +42,7 @@ function importDemoBuffer(client, buffer, session_id, callback) {
   // Skip uninteresting properties that change often
   var skipProps = ['m_flSimulationTime', 'm_nTickBase', 'm_flGroundAccelLinearFracLastTime', 'm_nResetEventsParity', 'm_nNewSequenceParity', 'm_nAnimationParity'];
 
-  var eventStream = client.query(copyFrom("COPY events (session_id, tick, name, data, locations, entities) FROM STDIN WITH NULL 'null'"));
+  var eventStream = client.query(copyFrom("COPY events (session_mms_id, tick, name, data, locations, entities) FROM STDIN WITH NULL 'null'"));
 
   var tempDeferredFilename = 'deferred_' + Math.random() + '.tmp';
   var entityPropStream = fs.createWriteStream(tempDeferredFilename);
@@ -66,7 +66,12 @@ function importDemoBuffer(client, buffer, session_id, callback) {
    */
   function flushAccumulatedEntityUpdates() {
     for (var update of bufferedEntityUpdates.values()) {
-      writeRow(entityPropStream, update);
+      if (typeof update === 'undefined') {
+        console.log("update doesn't exist?")
+        console.log(update)
+      } else {
+        writeRow(entityPropStream, update);
+      }
     }
 
     bufferedEntityUpdates.clear();
@@ -87,6 +92,8 @@ function importDemoBuffer(client, buffer, session_id, callback) {
         case 'number':
           return val;
         default:
+          console.log(val);
+          console.log(values);
           throw Error(`Cannot serialise value of type ${typeof val}`);
       }
     }).join('\t');
@@ -102,11 +109,11 @@ function importDemoBuffer(client, buffer, session_id, callback) {
     tickInterval = demo.header.playbackTime / demo.header.playbackTicks;
     console.log('Tick interval:', tickInterval, ', Tick rate:', Math.round(1 / tickInterval));
 
-    pace = require('pace')({total: demo.header.playbackTicks, maxBurden: 0.1});
+    // pace = require('pace')({total: demo.header.playbackTicks, maxBurden: 0.1});
   });
 
   demo.on('tickend', tick => {
-    pace.op(tick);
+    // pace.op(tick);
 
     // if we've moved back in time, or the interval has elapsed, flush entity updates
     if ((demo.currentTick - lastEntityUpdateFlushTick) * tickInterval > ENTITY_UPDATE_TIME_INTERVAL || demo.currentTick < lastEntityUpdateFlushTick) {
@@ -125,7 +132,7 @@ function importDemoBuffer(client, buffer, session_id, callback) {
         console.log('Copying entity property data to database...');
 
         return Promise.promisify(done => {
-          var stream = client.query(copyFrom("COPY entity_props (session_id, index, tick, prop, value) FROM STDIN WITH NULL 'null'"));
+          var stream = client.query(copyFrom("COPY entity_props (session_mms_id, index, tick, prop, value) FROM STDIN WITH NULL 'null'"));
           var fileStream = fs.createReadStream(tempDeferredFilename);
 
           fileStream.on('error', done);
@@ -222,7 +229,7 @@ function importDemoBuffer(client, buffer, session_id, callback) {
     var updateHash = XXHash.hash(new Buffer(e.entity.index + fullPropName), 0xCAFEBABE);
 
     bufferedEntityUpdates.set(updateHash, [
-      session_id,
+      mms_id,
       e.entity.index,
       demo.currentTick,
       fullPropName,
@@ -283,7 +290,7 @@ function importDemoBuffer(client, buffer, session_id, callback) {
     });
 
     writeRow(eventStream, [
-      session_id,
+      mms_id,
       demo.currentTick,
       e.name,
       e.event,
@@ -315,7 +322,7 @@ function importDemoBuffer(client, buffer, session_id, callback) {
  * @param {string} path - Path to demo file
  * @returns {Promise}
  */
-function importDemoFile(path) {
+function importDemoFile(path, matchMapStats, matchMapStatsID, match) {
   console.log('Connecting to database...');
   var client = new pg.Client(config.connectionString);
 
@@ -344,22 +351,94 @@ function importDemoFile(path) {
 
       return [
         ...fulfilled,
-        query('INSERT INTO sessions (title, level, game, data, tickrate) VALUES ($1, $2, $3, $4, $5) RETURNING id', [
+        query('INSERT INTO sessions (title, level, game, data, tickrate, date, mms_data, mms_id, match_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING mms_id', [
           header.serverName,
           header.mapName,
           header.gameDirectory,
           JSON.stringify({header}),
-          Math.round(header.playbackTicks / header.playbackTime)
+          Math.round(header.playbackTicks / header.playbackTime),
+          new Date(matchMapStats.date).toUTCString(),
+          JSON.stringify(matchMapStats),
+          matchMapStatsID,
+          match.id
         ])
       ];
     })
 
     // Import the buffer into the session
     .spread((client, buffer, _, session) => {
-      var session_id = session.rows[0].id;
-      console.log('Importing session to %d', session_id);
+      var mms_id = session.rows[0].mms_id;
+      console.log(`Importing demo (match: ${match.id} | matchMapStatsID: ${mms_id})`);
 
-      return Promise.promisify(importDemoBuffer)(client, buffer, session_id);
+      return Promise.promisify(importDemoBuffer)(client, buffer, mms_id);
+    })
+  
+    // .then(() => {
+      // var num_maps = match.maps.filter(ms => ms.statsId > 0).length
+      // return  query('INSERT INTO matches (match_id, date, data, maps) VALUES ($1, $2, $3, $4)', [
+        // match.id,
+        // new Date(match.date).toUTCString(),
+        // JSON.stringify(match),
+        // num_maps
+      // ])
+    // })
+
+    .then(() => {
+      console.log('Committing transaction...');
+      return query('COMMIT');
+    })
+
+    .catch(e => {
+      console.error(e.stack);
+
+      console.log('ERROR!! Rolling back...');
+      return query('ROLLBACK');
+    })
+
+    .then(() => {
+      console.log('Closing connection...');
+      client.end();
+      // pg.end();
+    });
+}
+
+async function importDemoWithMeta(path, matchMapStats, matchMapStatsID, match){
+  return new Promise((resolve, reject) => {
+    db.sync()
+      .then(() => {
+        importDemoFile(path, matchMapStats, matchMapStatsID, match).then(res => resolve(res))
+          .catch(e => reject(e))
+      })
+    })
+}
+
+function importMatch(match) {
+  console.log('Importing Match');
+  var client = new pg.Client(config.connectionString);
+
+  var query = Promise.promisify(client.query, {context: client});
+
+  return Promise.all([
+      Promise.promisify(client.connect, {context: client})(),
+    ])
+
+    .then(fulfilled => {
+      console.log('Starting match import...');
+
+      return [
+        ...fulfilled,
+        query('BEGIN')
+      ];
+    })
+  
+    .then(() => {
+      var num_maps = match.maps.filter(ms => ms.statsId > 0).length
+      return query('INSERT INTO matches (match_id, date, data, maps) VALUES ($1, $2, $3, $4)', [
+        match.id,
+        new Date(match.date).toUTCString(),
+        JSON.stringify(match),
+        num_maps
+      ])
     })
 
     .then(() => {
@@ -381,11 +460,11 @@ function importDemoFile(path) {
     });
 }
 
-async function importDemoWithMeta(path, MatchMapStats, Match){
+function importMatchWrap(match){
   return new Promise((resolve, reject) => {
     db.sync()
       .then(() => {
-        importDemoFile(path).then(res => resolve(res))
+        importMatch(match).then(res => resolve(res))
           .catch(e => reject(e))
       })
     })
@@ -402,3 +481,4 @@ async function importDemoWithMeta(path, MatchMapStats, Match){
   // });
 
 module.exports.importDemo = importDemoWithMeta
+module.exports.importMatch = importMatchWrap
