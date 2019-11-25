@@ -61,6 +61,16 @@ async function downloadDay(date_str){
 
     // Download demo archive
     try {
+      // Import the match data into SQL database, in case something goes wrong with the download or the import.
+      do {
+        // Snoozes function without pausing event loop
+        await snooze(1000)
+        // console.log(`Import for ${matchArr[i].id}-${fulfilled.demos[d]} waiting. . . curImport = ${curImport}`)
+      }
+      while (curImport)
+      curImport = matchArr[i].id
+      await importMatch(matchArr[i]).then(curImport = "")
+
       do {
         // Snoozes function without pausing event loop
         // console.log("concurDL: %d", concurDL)
@@ -71,14 +81,6 @@ async function downloadDay(date_str){
         downloadMatch(matchArr[i], MatchMapStatsArr[i], MatchesStats[i].id).then(async fulfilled => {
           console.log(`Importing demos for Match: ${matchArr[i].id}`)
 
-          do {
-            // Snoozes function without pausing event loop
-            await snooze(1000)
-            // console.log(`Import for ${matchArr[i].id}-${fulfilled.demos[d]} waiting. . . curImport = ${curImport}`)
-          }
-          while (curImport)
-          curImport = matchArr[i].id
-          await importMatch(matchArr[i]).then(curImport = "")
           for (let d=0; d < fulfilled.demos.length; d++) {
             // Is the current MatchMapStats appropriate for the demo?
             var haveMapStats = fulfilled.demos[d].match(MapDict[MatchMapStatsArr[i].map])

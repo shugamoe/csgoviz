@@ -413,9 +413,8 @@ async function importDemoWithMeta(path, matchMapStats, matchMapStatsID, match){
 }
 
 function importMatch(match) {
-  console.log('Importing Match');
+  console.log('Importing Match info (%d)', match.id);
   var client = new pg.Client(config.connectionString);
-
   var query = Promise.promisify(client.query, {context: client});
 
   return Promise.all([
@@ -423,8 +422,6 @@ function importMatch(match) {
     ])
 
     .then(fulfilled => {
-      console.log('Starting match import...');
-
       return [
         ...fulfilled,
         query('BEGIN')
@@ -442,7 +439,6 @@ function importMatch(match) {
     })
 
     .then(() => {
-      console.log('Committing transaction...');
       return query('COMMIT');
     })
 
@@ -454,7 +450,7 @@ function importMatch(match) {
     })
 
     .then(() => {
-      console.log('Closing connection...');
+      console.log('Match imported (%d)', match.id);
       client.end();
       // pg.end();
     });
