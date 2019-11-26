@@ -29,7 +29,7 @@ var curImport = ""
 async function downloadDay(date_str){
   try {
     await queryLimiter.removeTokens(1)
-    var MatchesStats = await HLTV.getMatchesStats({
+    var matchesStats = await HLTV.getMatchesStats({
       startDate: date_str,
       endDate: date_str,
       matchType: matchType.LAN
@@ -43,25 +43,22 @@ async function downloadDay(date_str){
   var matchArr = []
   // for (let i = 0; i < MatchesStats.length; i++){
   // for (let i = 0; i < 5; i++){
-  MatchesStats.forEach(async (ele, i, msArray) => { // msArray "MatchesStats" array
+  matchesStats.forEach(async (matchStats) => { 
     try {
       await queryLimiter.removeTokens(1)
       var matchMapStats = await HLTV.getMatchMapStats({
-        id: msArray[i].id
+        id: matchStats.id
       })
-      console.log("got matchMapStats")
     } catch (err) {
       console.log("HLTV.getMatchMapStats error")
       console.dir(err)
     }
 
     try {
-      console.log("Wait for token.")
       queryLimiter.removeTokens(1)
       var match = await HLTV.getMatch({
         id: matchMapStats.matchPageID
       })
-      console.log("Got match")
     } catch(err) {
       console.log("HLTV.getmatchMapStats error")
       console.dir(err)
@@ -80,12 +77,17 @@ async function downloadDay(date_str){
         attributes: ['match_id'],
         where: {match_id: match.id}
       }).then(async res => {
-        console.log(res)
-        if (!res[0].dataValues.match_id){
+        if (res.length == 0){ // If we don't have that match_id in the DB already
           curImport = match.id
           await importMatch(match).then(curImport = "")
         } else {
-          console.log(`Match ${match.id} is in the DB already.`)
+          if (res[0].dataValues.match_id == match.id){
+            orphanMapStats.push({json: matchMapStats, MapStatsID: matchStats.id})
+            console.log(`Match ${match.id} is in the DB already.`)
+            return null // If we have the match already, in the DB, don't bother trying to DL the demos.
+          } else {
+            console.log("Wut.")
+          }
         }
       })
 
@@ -96,21 +98,22 @@ async function downloadDay(date_str){
       }
       while (concurDL >= 2)
 
-        downloadMatch(match, matchMapStats, msArray[i].id).then(async fulfilled => {
+        downloadMatch(match, matchMapStats, matchStats.id).then(async fulfilled => {
           console.log(`Importing demos for Match: ${match.id}`)
 
-          for (let d=0; d < fulfilled.demos.length; d++) {
+          // for (let d=0; d < fulfilled.demos.length; d++) {
+          fulfilled.demos.forEach(async (demo) => {
             // Is the current matchMapStats appropriate for the demo?
-            var haveMapStats = fulfilled.demos[d].match(MapDict[matchMapStats.map])
+            var haveMapStats = demo.match(MapDict[matchMapStats.map])
             console.log(haveMapStats)
             var importmatchMapStats
             var importmatchMapStatsID
             if (haveMapStats) {
               importmatchMapStats = matchMapStats
-              importmatchMapStatsID = msArray[i].id
+              importmatchMapStatsID = matchStats.id
             } else { // If not, check orphans
               var matchingOrphans = orphanMapStats.filter(ms => {
-                var sameMap = fulfilled.demos[d].match(MapDict[ms.json.map])
+                var sameMap = demo.match(MapDict[ms.json.map])
                 return ((ms.matchPageID == match.id) && sameMap)
               })
               if (matchingOrphans.length == 1) {
@@ -130,15 +133,15 @@ async function downloadDay(date_str){
             }
             while (curImport)
 
-            curImport = match.id + "|" + fulfilled.demos[d]
-            await importDemo(fulfilled.out_dir + fulfilled.demos[d], importmatchMapStats, importmatchMapStatsID, match).then(() => {
+            curImport = match.id + "|" + demo
+            await importDemo(fulfilled.out_dir + demo, importmatchMapStats, importmatchMapStatsID, match).then(() => {
               curImport = ""
             }).catch((err) => {
               console.dir("Error importing demo")
               console.log(err)
               problemImports.push(match)
             })
-          }
+          })
           // After importing all demos for the match, remove the orphan(s) used.
           orphanMapStats = orphanMapStats.filter(ms => ms.json.matchPageID != match.id)
         }).catch(() => '')
@@ -146,7 +149,6 @@ async function downloadDay(date_str){
       console.log(err)
     }
   })
-  console.log("After forEach")
 }
 
 setTimeout(function() {
