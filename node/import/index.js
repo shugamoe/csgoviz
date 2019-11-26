@@ -20,6 +20,7 @@ var XXHash = require('xxhash');
 var config = require('./config.json');
 
 var db = require('./db.js');
+var syncOpts = {logging: false}
 var models = require('./models.js');
 
 /**
@@ -404,7 +405,7 @@ function importDemoFile(path, matchMapStats, matchMapStatsID, match) {
 
 async function importDemoWithMeta(path, matchMapStats, matchMapStatsID, match){
   return new Promise((resolve, reject) => {
-    db.sync()
+    db.sync(syncOpts)
       .then(() => {
         importDemoFile(path, matchMapStats, matchMapStatsID, match).then(res => resolve(res))
           .catch(e => reject(e))
@@ -458,7 +459,7 @@ function importMatch(match) {
 
 function importMatchWrap(match){
   return new Promise((resolve, reject) => {
-    db.sync()
+    db.sync(syncOpts)
       .then(() => {
         importMatch(match).then(res => resolve(res))
           .catch(e => reject(e))
@@ -476,5 +477,6 @@ function importMatchWrap(match){
     // console.log('The end.');
   // });
 
+db.sync()
 module.exports.importDemo = importDemoWithMeta
 module.exports.importMatch = importMatchWrap

@@ -8,13 +8,17 @@ const MapDict = require('./maps.json')
 const { extractArchive } = require('./utils.js')
 const { importDemo, importMatch } = require('../import/index.js')
 const { RateLimiterMemory, RateLimiterQueue } = require('rate-limiter-flexible');
+var MatchSQL = require('../import/models.js').Match
+// var pg = require('pg')
+// var config = require('../import/config.json')
+// var client = new pg.Client(config.connectionString)
 
 const queryRLM = new RateLimiterMemory({
     points: 1,
     duration: 3,
 });
 const queryLimiter = new RateLimiterQueue(queryRLM, {
-    maxQueueSize: 2,
+    maxQueueSize: 1000,
 })
 
 
@@ -24,7 +28,7 @@ var concurDL = 0
 var curImport = ""
 async function downloadDay(date_str){
   try {
-    const remainingTokens = await queryLimiter.removeTokens(1)
+    await queryLimiter.removeTokens(1)
     var MatchesStats = await HLTV.getMatchesStats({
       startDate: date_str,
       endDate: date_str,
@@ -35,27 +39,31 @@ async function downloadDay(date_str){
     console.dir(err)
   }
 
-  var MatchMapStatsArr = []
+  var matchMapStatsArr = []
   var matchArr = []
   // for (let i = 0; i < MatchesStats.length; i++){
-  for (let i = 0; i < 5; i++){
+  // for (let i = 0; i < 5; i++){
+  MatchesStats.forEach(async (ele, i, msArray) => { // msArray "MatchesStats" array
     try {
       await queryLimiter.removeTokens(1)
-      MatchMapStatsArr[i] = await HLTV.getMatchMapStats({
-        id: MatchesStats[i].id
+      var matchMapStats = await HLTV.getMatchMapStats({
+        id: msArray[i].id
       })
+      console.log("got matchMapStats")
     } catch (err) {
       console.log("HLTV.getMatchMapStats error")
       console.dir(err)
     }
 
     try {
-      await queryLimiter.removeTokens(1)
-      matchArr[i] = await HLTV.getMatch({
-        id: MatchMapStatsArr[i].matchPageID
+      console.log("Wait for token.")
+      queryLimiter.removeTokens(1)
+      var match = await HLTV.getMatch({
+        id: matchMapStats.matchPageID
       })
+      console.log("Got match")
     } catch(err) {
-      console.log("HLTV.getMatchMapStats error")
+      console.log("HLTV.getmatchMapStats error")
       console.dir(err)
     }
 
@@ -65,11 +73,21 @@ async function downloadDay(date_str){
       do {
         // Snoozes function without pausing event loop
         await snooze(1000)
-        // console.log(`Import for ${matchArr[i].id}-${fulfilled.demos[d]} waiting. . . curImport = ${curImport}`)
       }
       while (curImport)
-      curImport = matchArr[i].id
-      await importMatch(matchArr[i]).then(curImport = "")
+
+      MatchSQL.findAll({
+        attributes: ['match_id'],
+        where: {match_id: match.id}
+      }).then(async res => {
+        console.log(res)
+        if (!res[0].dataValues.match_id){
+          curImport = match.id
+          await importMatch(match).then(curImport = "")
+        } else {
+          console.log(`Match ${match.id} is in the DB already.`)
+        }
+      })
 
       do {
         // Snoozes function without pausing event loop
@@ -78,26 +96,26 @@ async function downloadDay(date_str){
       }
       while (concurDL >= 2)
 
-        downloadMatch(matchArr[i], MatchMapStatsArr[i], MatchesStats[i].id).then(async fulfilled => {
-          console.log(`Importing demos for Match: ${matchArr[i].id}`)
+        downloadMatch(match, matchMapStats, msArray[i].id).then(async fulfilled => {
+          console.log(`Importing demos for Match: ${match.id}`)
 
           for (let d=0; d < fulfilled.demos.length; d++) {
-            // Is the current MatchMapStats appropriate for the demo?
-            var haveMapStats = fulfilled.demos[d].match(MapDict[MatchMapStatsArr[i].map])
+            // Is the current matchMapStats appropriate for the demo?
+            var haveMapStats = fulfilled.demos[d].match(MapDict[matchMapStats.map])
             console.log(haveMapStats)
-            var importMatchMapStats
-            var importMatchMapStatsID
+            var importmatchMapStats
+            var importmatchMapStatsID
             if (haveMapStats) {
-              importMatchMapStats = MatchMapStatsArr[i]
-              importMatchMapStatsID = MatchesStats[i].id
+              importmatchMapStats = matchMapStats
+              importmatchMapStatsID = msArray[i].id
             } else { // If not, check orphans
               var matchingOrphans = orphanMapStats.filter(ms => {
                 var sameMap = fulfilled.demos[d].match(MapDict[ms.json.map])
-                return ((ms.matchPageID == matchArr[i].id) && sameMap)
+                return ((ms.matchPageID == match.id) && sameMap)
               })
               if (matchingOrphans.length == 1) {
-                importMatchMapStats = matchingOrphans[0].json
-                importMatchMapStatsID = matchingOrphans[0].MapStatsID
+                importmatchMapStats = matchingOrphans[0].json
+                importmatchMapStatsID = matchingOrphans[0].MapStatsID
               } else {
                 console.dir(matchingOrphans)
                 console.dir(orphanMapStats)
@@ -112,22 +130,23 @@ async function downloadDay(date_str){
             }
             while (curImport)
 
-            curImport = matchArr[i].id + "|" + fulfilled.demos[d]
-            await importDemo(fulfilled.out_dir + fulfilled.demos[d], importMatchMapStats, importMatchMapStatsID, matchArr[i]).then(() => {
+            curImport = match.id + "|" + fulfilled.demos[d]
+            await importDemo(fulfilled.out_dir + fulfilled.demos[d], importmatchMapStats, importmatchMapStatsID, match).then(() => {
               curImport = ""
             }).catch((err) => {
               console.dir("Error importing demo")
               console.log(err)
-              problemImports.push(matchArr[i])
+              problemImports.push(match)
             })
           }
           // After importing all demos for the match, remove the orphan(s) used.
-          orphanMapStats = orphanMapStats.filter(ms => ms.json.matchPageID != matchArr[i].id)
+          orphanMapStats = orphanMapStats.filter(ms => ms.json.matchPageID != match.id)
         }).catch(() => '')
     } catch (err) {
       console.log(err)
     }
-  }
+  })
+  console.log("After forEach")
 }
 
 setTimeout(function() {
@@ -136,7 +155,7 @@ setTimeout(function() {
 const snooze = ms => new Promise(resolve => setTimeout(resolve, ms))
 
 
-async function downloadMatch(Match, MatchMapStats, MatchMapStatsID){
+async function downloadMatch(Match, matchMapStats, matchMapStatsID){
   var demo_link = Match.demos.filter(demo => demo.name === 'GOTV Demo')[0].link
   demo_link = apiConfig.hltvUrl + demo_link
 
@@ -152,7 +171,7 @@ async function downloadMatch(Match, MatchMapStats, MatchMapStatsID){
     concurDL += 1
     var out = fs.createWriteStream(out_path, {flags: 'wx'})
       .on('error', () => {
-        orphanMapStats.push({json: MatchMapStats, MapStatsID: MatchMapStatsID})
+        orphanMapStats.push({json: matchMapStats, MapStatsID: matchMapStatsID})
         concurDL -= 1
         reject(`${Match.id} already downloaded or downloading (${out_path}), skipping. . .`)
       })
@@ -183,7 +202,4 @@ var test_getMatchesStats = JSON.parse(fs.readFileSync('./test_getMatchesStats.tx
 var test_getMatchMapStats = JSON.parse(fs.readFileSync('./test_getMatchMapStats.txt', 'utf8'))
 var test_getMatch = JSON.parse(fs.readFileSync('./test_getMatch.txt'))
 // downloadMatch(test_getMatch, test_getMatchMapStats)
-downloadDay('2019-11-02').then(() => {
-  console.log("Problem imports:")
-  console.log(problemImports)
-})
+downloadDay('2019-11-02')

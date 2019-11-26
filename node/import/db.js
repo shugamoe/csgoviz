@@ -4,6 +4,7 @@ var Sequelize = require('sequelize');
 const config = require('./config.json');
 
 let options = {
+  logging: false,
   maxConcurrentQueries: 100,
   native: false,
   define: {
