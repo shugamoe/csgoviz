@@ -103,12 +103,12 @@ function importDemoBuffer(client, buffer, mms_id, callback) {
   }
 
   demo.on('start', () => {
-    console.log('Parsed header:');
-    console.log(demo.header);
+    // console.log('Parsed header:');
+    // console.log(demo.header);
 
     // Calculate the amount of time between ticks
     tickInterval = demo.header.playbackTime / demo.header.playbackTicks;
-    console.log('Tick interval:', tickInterval, ', Tick rate:', Math.round(1 / tickInterval));
+    // console.log('Tick interval:', tickInterval, ', Tick rate:', Math.round(1 / tickInterval));
 
     // pace = require('pace')({total: demo.header.playbackTicks, maxBurden: 0.1});
   });
@@ -123,14 +123,14 @@ function importDemoBuffer(client, buffer, mms_id, callback) {
   });
 
   demo.on('end', () => {
-    console.log('Closing streams...');
+    // console.log('Closing streams...');
 
     Promise.all([
         Promise.promisify(eventStream.end, {context: eventStream})(),
         Promise.promisify(entityPropStream.end, {context: entityPropStream})()
       ])
       .then(() => {
-        console.log('Copying entity property data to database...');
+        // console.log('Copying entity property data to database...');
 
         return Promise.promisify(done => {
           var stream = client.query(copyFrom("COPY entity_props (session_mms_id, index, tick, prop, value) FROM STDIN WITH NULL 'null'"));
@@ -140,14 +140,14 @@ function importDemoBuffer(client, buffer, mms_id, callback) {
 
           fileStream.pipe(stream)
             .on('finish', () => {
-              console.log('Copied.');
+              // console.log('Copied.');
               fs.unlink(tempDeferredFilename, done);
             })
             .on('error', done);
         })();
       })
       .then(() => {
-        console.log('All streams closed.');
+        // console.log('All streams closed.');
         callback(null);
       })
       .catch(callback);
@@ -314,7 +314,7 @@ function importDemoBuffer(client, buffer, mms_id, callback) {
     players[e.entryIndex] = e.userData;
   });
 
-  console.log('Parsing buffer...');
+  // console.log('Parsing buffer...');
   demo.parse(buffer);
 }
 
@@ -324,7 +324,7 @@ function importDemoBuffer(client, buffer, mms_id, callback) {
  * @returns {Promise}
  */
 function importDemoFile(path, matchMapStats, matchMapStatsID, match) {
-  console.log('Connecting to database...');
+  // console.log('Connecting to database...');
   var client = new pg.Client(config.connectionString);
 
   var query = Promise.promisify(client.query, {context: client});
@@ -335,7 +335,7 @@ function importDemoFile(path, matchMapStats, matchMapStatsID, match) {
     ])
 
     .then(fulfilled => {
-      console.log('Starting transaction...');
+      // console.log('Starting transaction...');
 
       return [
         ...fulfilled,
@@ -348,7 +348,7 @@ function importDemoFile(path, matchMapStats, matchMapStatsID, match) {
       var buffer = fulfilled[1];
       var header = demofile.parseHeader(buffer);
 
-      console.log('Creating session...');
+      // console.log('Creating session...');
 
       return [
         ...fulfilled,
@@ -369,7 +369,7 @@ function importDemoFile(path, matchMapStats, matchMapStatsID, match) {
     // Import the buffer into the session
     .spread((client, buffer, _, session) => {
       var mms_id = session.rows[0].mms_id;
-      console.log(`Importing demo (match: ${match.id} | matchMapStatsID: ${mms_id})`);
+      console.log(`\t\t\t\tImporting demo (match: ${match.id} | matchMapStatsID: ${mms_id})`);
 
       return Promise.promisify(importDemoBuffer)(client, buffer, mms_id);
     })
@@ -397,7 +397,7 @@ function importDemoFile(path, matchMapStats, matchMapStatsID, match) {
     })
 
     .then(() => {
-      console.log('Closing connection...');
+      // console.log('Closing connection...');
       client.end();
       // pg.end();
     });
@@ -414,7 +414,6 @@ async function importDemoWithMeta(path, matchMapStats, matchMapStatsID, match){
 }
 
 function importMatch(match) {
-  console.log('Importing Match info (%d)', match.id);
   var client = new pg.Client(config.connectionString);
   var query = Promise.promisify(client.query, {context: client});
 

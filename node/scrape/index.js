@@ -9,6 +9,7 @@ const { extractArchive } = require('./utils.js')
 const { importDemo, importMatch } = require('../import/index.js')
 const { RateLimiterMemory, RateLimiterQueue } = require('rate-limiter-flexible');
 var MatchSQL = require('../import/models.js').Match
+const { exec } = require("child_process")
 // var pg = require('pg')
 // var config = require('../import/config.json')
 // var client = new pg.Client(config.connectionString)
@@ -39,11 +40,12 @@ async function downloadDay(date_str){
     console.dir(err)
   }
 
-  var matchMapStatsArr = []
-  var matchArr = []
   // for (let i = 0; i < MatchesStats.length; i++){
   // for (let i = 0; i < 5; i++){
-  matchesStats.forEach(async (matchStats) => { 
+  matchesStats.forEach(async (matchStats, msi, arr) => { 
+    if (msi >= 5){
+      return null
+    }
     try {
       await queryLimiter.removeTokens(1)
       var matchMapStats = await HLTV.getMatchMapStats({
@@ -99,13 +101,11 @@ async function downloadDay(date_str){
       while (concurDL >= 2)
 
         downloadMatch(match, matchMapStats, matchStats.id).then(async fulfilled => {
-          console.log(`Importing demos for Match: ${match.id}`)
+          console.log(`\t\t\t\tImporting demos for Match: ${match.id}`)
 
-          // for (let d=0; d < fulfilled.demos.length; d++) {
           fulfilled.demos.forEach(async (demo) => {
             // Is the current matchMapStats appropriate for the demo?
             var haveMapStats = demo.match(MapDict[matchMapStats.map])
-            console.log(haveMapStats)
             var importmatchMapStats
             var importmatchMapStatsID
             if (haveMapStats) {
@@ -114,16 +114,27 @@ async function downloadDay(date_str){
             } else { // If not, check orphans
               var matchingOrphans = orphanMapStats.filter(ms => {
                 var sameMap = demo.match(MapDict[ms.json.map])
-                return ((ms.matchPageID == match.id) && sameMap)
+                return ((ms.json.matchPageID == match.id) && sameMap)
               })
-              if (matchingOrphans.length == 1) {
+              if (matchingOrphans.length >= 1) {
+                console.log(matchingOrphans)
                 importmatchMapStats = matchingOrphans[0].json
                 importmatchMapStatsID = matchingOrphans[0].MapStatsID
               } else {
-                console.dir(matchingOrphans)
-                console.dir(orphanMapStats)
-                console.dir(fulfilled)
-                throw new Error("No Orphan found?")
+                // Go download the matchMapStats real quick (could be possible
+                // if games in match were played before/after midnight
+                console.log(demo)
+                console.log(orphanMapStats)
+                var missingMapStats = match.maps.filter(map => demo.match(MapDict[map.name]))
+                if (missingMapStats.length == 1) {
+                  missingMapStats = missingMapStats[0]
+                  await queryLimiter.removeTokens(1)
+                  importmatchMapStats = await HLTV.getMatchMapStats({
+                    id: missingMapStats.statsId
+                  })
+                  importmatchMapStatsID = missingMapStats.statsId
+                }
+                console.log(`\t\t\tFetched matchMapStats: ${missingMapStats.statsId} for ${match.id}/${demo}`)
               }
             }
             do {
@@ -149,6 +160,8 @@ async function downloadDay(date_str){
       console.log(err)
     }
   })
+  exec("rm -rf ~/matches/*.dem")
+  exec("rm -rf ~/matches/*.rar")
 }
 
 setTimeout(function() {
@@ -166,14 +179,13 @@ async function downloadMatch(Match, matchMapStats, matchMapStatsID){
 
   if (!fs.existsSync(out_dir)){
     fs.mkdirSync(out_dir, {recursive: true})
-    console.log("%d folder created.", Match.id)
+    // console.log("%d folder created.", Match.id)
   }
 
   return new Promise((resolve, reject) => {
     concurDL += 1
     var out = fs.createWriteStream(out_path, {flags: 'wx'})
       .on('error', () => {
-        orphanMapStats.push({json: matchMapStats, MapStatsID: matchMapStatsID})
         concurDL -= 1
         reject(`${Match.id} already downloaded or downloading (${out_path}), skipping. . .`)
       })
