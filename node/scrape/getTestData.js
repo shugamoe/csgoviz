@@ -48,7 +48,7 @@ function gettestData(){
     })
 }
 
-// gettestData()
+gettestData()
 var test_getMatchesStats = JSON.parse(fs.readFileSync('./test_getMatchesStats.txt', 'utf8'))
 var test_getMatchMapStats = JSON.parse(fs.readFileSync('./test_getMatchMapStats.txt', 'utf8'))
 var test_getMatch = JSON.parse(fs.readFileSync('./test_getMatch.txt'))

@@ -227,7 +227,8 @@ function importDemoBuffer(client, buffer, mms_id, callback) {
       entityPositions[e.entity.index] = newValue;
     }
 
-    var updateHash = XXHash.hash(new Buffer(e.entity.index + fullPropName), 0xCAFEBABE);
+    // var updateHash = XXHash.hash(new Buffer(e.entity.index + fullPropName), 0xCAFEBABE);
+    var updateHash = XXHash.hash(Buffer.alloc(e.entity.index + fullPropName), 0xCAFEBABE);
 
     bufferedEntityUpdates.set(updateHash, [
       mms_id,
