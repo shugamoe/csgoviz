@@ -383,7 +383,7 @@ function importDemoFile(path, matchMapStats, matchMapStatsID, match) {
     // })
 
     .then(() => {
-      console.log('Committing transaction...');
+      // console.log(`${matchMapStatsID}|${match.id} committing transaction...`);
       return query('COMMIT');
     })
 
@@ -395,7 +395,7 @@ function importDemoFile(path, matchMapStats, matchMapStatsID, match) {
     })
 
     .then(() => {
-      // console.log(`${matchMapStatsID}|${match.id} imported to Match table.`);
+      console.log(`${matchMapStatsID}|${match.id} imported to Map table.`);
       client.end();
       // pg.end();
     });
