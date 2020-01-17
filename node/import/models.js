@@ -25,7 +25,7 @@ var Event = db.define('event', {
 }, {
   indexes: [
     {
-      fields: ['name', 'session_mms_id']
+      fields: ['name', 'map_mms_id']
     },
     {
       fields: ['data'],
@@ -63,10 +63,10 @@ var EntityProp = db.define('entity_prop', {
 }, {
   indexes: [
     {
-      fields: ['index', 'prop', 'session_mms_id', 'tick']
+      fields: ['index', 'prop', 'map_mms_id', 'tick']
     },
     {
-      fields: ['session_mms_id']
+      fields: ['map_mms_id']
     },
     {
       method: 'BTREE',
@@ -81,7 +81,7 @@ var EntityProp = db.define('entity_prop', {
 });
 
 /**
- * session model
+ * map model
  * @memberof module:models
  * @type {object}
  * @property {string} title
@@ -90,7 +90,7 @@ var EntityProp = db.define('entity_prop', {
  * @property {object} data
  * @property {number} tickrate
  */
-var Session = db.define('session', {
+var Map = db.define('map', {
   title: {type: Sequelize.STRING, allowNull: false},
   level: {type: Sequelize.STRING, allowNull: false},
   game: {type: Sequelize.STRING, allowNull: false},
@@ -98,7 +98,7 @@ var Session = db.define('session', {
   tickrate: {type: Sequelize.INTEGER, allowNull: false},
   date: {type: Sequelize.DATE, allowNull: false},
   mms_data: {type: Sequelize.JSONB, allowNull: true},
-  mms_id: {type: Sequelize.INTEGER, allowNull: false, primaryKey: true},
+  mms_id: {type: Sequelize.INTEGER, allowNull: false, primaryKey: true}, // MatchMapStat ID
   match_id: {type: Sequelize.INTEGER, allowNull: false}
 });
 
@@ -106,14 +106,15 @@ var Match = db.define('match', {
   match_id: {type: Sequelize.INTEGER, allowNull: false, primaryKey: true},
   date: {type: Sequelize.DATE, allowNull: false},
   data: {type: Sequelize.JSONB},
+  maps_played: {type: Sequelize.INTEGER, allowNull: false},
   maps: {type: Sequelize.INTEGER, allowNull: false}
 });
 
-Session.hasMany(Event, {allowNull: false, onDelete: 'cascade'});
-Session.hasMany(EntityProp, {allowNull: false, onDelete: 'cascade'});
+Map.hasMany(Event, {allowNull: false, onDelete: 'cascade'});
+Map.hasMany(EntityProp, {allowNull: false, onDelete: 'cascade'});
 
 module.exports = {
-  Session,
+  Map,
   Event,
   EntityProp,
   Match

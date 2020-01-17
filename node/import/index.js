@@ -21,16 +21,16 @@ var config = require('./config.json');
 
 var db = require('./db.js');
 var syncOpts = {logging: false}
-var models = require('./models.js');
+var Models = require('./models.js');
 
 /**
  * Imports a demofile buffer into the database.
  * @param {PgClient} client
  * @param {Buffer} buffer - Demo file buffer
- * @param {number} session_id - New session ID
+ * @param {number} map_id - New map ID
  * @param callback
  */
-function importDemoBuffer(client, buffer, mms_id, callback) {
+function importDemoBuffer(client, buffer, matchMapStatsID, callback) {
   var demo = new demofile.DemoFile();
   // var pace;
   var players = new Array(256);
@@ -43,7 +43,7 @@ function importDemoBuffer(client, buffer, mms_id, callback) {
   // Skip uninteresting properties that change often
   var skipProps = ['m_flSimulationTime', 'm_nTickBase', 'm_flGroundAccelLinearFracLastTime', 'm_nResetEventsParity', 'm_nNewSequenceParity', 'm_nAnimationParity'];
 
-  var eventStream = client.query(copyFrom("COPY events (session_mms_id, tick, name, data, locations, entities) FROM STDIN WITH NULL 'null'"));
+  var eventStream = client.query(copyFrom("COPY events (map_mms_id, tick, name, data, locations, entities) FROM STDIN WITH NULL 'null'"));
 
   var tempDeferredFilename = 'deferred_' + Math.random() + '.tmp';
   var entityPropStream = fs.createWriteStream(tempDeferredFilename);
@@ -133,7 +133,7 @@ function importDemoBuffer(client, buffer, mms_id, callback) {
         // console.log('Copying entity property data to database...');
 
         return Promise.promisify(done => {
-          var stream = client.query(copyFrom("COPY entity_props (session_mms_id, index, tick, prop, value) FROM STDIN WITH NULL 'null'"));
+          var stream = client.query(copyFrom("COPY entity_props (map_mms_id, index, tick, prop, value) FROM STDIN WITH NULL 'null'"));
           var fileStream = fs.createReadStream(tempDeferredFilename);
 
           fileStream.on('error', done);
@@ -231,7 +231,7 @@ function importDemoBuffer(client, buffer, mms_id, callback) {
     var updateHash = XXHash.hash(Buffer.alloc(e.entity.index + fullPropName), 0xCAFEBABE);
 
     bufferedEntityUpdates.set(updateHash, [
-      mms_id,
+      matchMapStatsID,
       e.entity.index,
       demo.currentTick,
       fullPropName,
@@ -292,7 +292,7 @@ function importDemoBuffer(client, buffer, mms_id, callback) {
     });
 
     writeRow(eventStream, [
-      mms_id,
+      matchMapStatsID,
       demo.currentTick,
       e.name,
       e.event,
@@ -344,16 +344,16 @@ function importDemoFile(path, matchMapStats, matchMapStatsID, match) {
       ];
     })
 
-    // Parse the demo header in and create a session
+    // Parse the demo header in and create a map
     .then(fulfilled => {
       var buffer = fulfilled[1];
       var header = demofile.parseHeader(buffer);
 
-      // console.log('Creating session...');
+      // console.log('Creating map...');
 
       return [
         ...fulfilled,
-        query('INSERT INTO sessions (title, level, game, data, tickrate, date, mms_data, mms_id, match_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING mms_id', [
+        query('INSERT INTO maps (title, level, game, data, tickrate, date, mms_data, mms_id, match_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING mms_id', [
           header.serverName,
           header.mapName,
           header.gameDirectory,
@@ -367,12 +367,9 @@ function importDemoFile(path, matchMapStats, matchMapStatsID, match) {
       ];
     })
 
-    // Import the buffer into the session
-    .spread((client, buffer, _, session) => {
-      var mms_id = session.rows[0].mms_id;
-      console.log(`\t\t\t\tImporting demo (match: ${match.id} | matchMapStatsID: ${mms_id})`);
-
-      return Promise.promisify(importDemoBuffer)(client, buffer, mms_id);
+    // Import the buffer into the DB
+    .spread((client, buffer, _, query) => {
+      return Promise.promisify(importDemoBuffer)(client, buffer, query.rows[0].mms_id);
     })
   
     // .then(() => {
@@ -398,7 +395,7 @@ function importDemoFile(path, matchMapStats, matchMapStatsID, match) {
     })
 
     .then(() => {
-      // console.log('Closing connection...');
+      // console.log(`${matchMapStatsID}|${match.id} imported to Match table.`);
       client.end();
       // pg.end();
     });
@@ -430,12 +427,13 @@ function importMatch(match) {
     })
   
     .then(() => {
-      var num_maps = match.maps.filter(ms => ms.statsId > 0).length
-      return query('INSERT INTO matches (match_id, date, data, maps) VALUES ($1, $2, $3, $4)', [
+      var mapsPlayed = match.maps.filter(ms => ms.statsId > 0).length // Ignore unplayed maps
+      return query('INSERT INTO matches (match_id, date, data, maps_played, maps) VALUES ($1, $2, $3, $4, $5)', [
         match.id,
         new Date(match.date).toUTCString(),
         JSON.stringify(match),
-        num_maps
+        mapsPlayed,
+        match.maps.length // Total maps (played or not)
       ])
     })
 
@@ -451,7 +449,7 @@ function importMatch(match) {
     })
 
     .then(() => {
-      console.log('Match imported (%d)', match.id);
+      console.log(`|${match.id} imported to Match table.`);
       client.end();
       // pg.end();
     });

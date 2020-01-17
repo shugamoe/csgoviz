@@ -5,17 +5,19 @@ const apiConfig = require('hltv').default.config
 const matchType = require('hltv').MatchType
 const FetchStream = require('fetch').FetchStream
 
-
 // Don't get banned from HLTV, be respectful, use rate-limiter-flexible later
-function sleep(milliSeconds) {
-  var startTime = new Date().getTime();
+function sleep (milliSeconds) {
+  var startTime = new Date().getTime()
   while (new Date().getTime() < startTime + milliSeconds);
 }
 
-function gettestData(){
+function gettestData () {
   // Search matches by date, LAN events only
-  HLTV.getMatchesStats({startDate: '2019-11-02', endDate: '2019-11-02',
-    matchType: matchType.LAN})
+  HLTV.getMatchesStats({
+    startDate: '2019-11-03',
+    endDate: '2019-11-03',
+    matchType: matchType.LAN
+  })
 
     // Write getMatchesStats
     // then grab MatchMapStats of an individual match to get the matchPage ID
@@ -25,7 +27,7 @@ function gettestData(){
       fs.writeFile('test_getMatchesStats.txt', to_write, (err) => console.log(err))
 
       sleep(1500)
-      return HLTV.getMatchMapStats({id: MatchMapStatsid})
+      return HLTV.getMatchMapStats({ id: MatchMapStatsid })
     })
 
     // Write MatchMapStats
@@ -36,13 +38,13 @@ function gettestData(){
       sleep(1500)
       var matchPageID = MatchMapStats.matchPageID
       // Keep the round summary data in MatchMapStats to save to DB later
-      return Promise.all([HLTV.getMatch({id: matchPageID}), MatchMapStats])
+      return Promise.all([HLTV.getMatch({ id: matchPageID }), MatchMapStats])
     })
 
     // Write getMatch then exit
     .then(([res, MatchMapStats]) => {
       var to_write = JSON.stringify(res, null, 2)
-      console.log("Still have the getMatchMapStats results?")
+      console.log('Still have the getMatchMapStats results?')
       console.log(MatchMapStats)
       fs.writeFile('test_getMatch.txt', to_write, err => console.log(err))
     })

@@ -8,9 +8,10 @@ const MapDict = require('./maps.json')
 const { extractArchive } = require('./utils.js')
 const { importDemo, importMatch } = require('../import/index.js')
 const { RateLimiterMemory, RateLimiterQueue } = require('rate-limiter-flexible')
-var MatchSQL = require('../import/models.js').Match
+var Models = require('../import/models.js')
 const { exec } = require('child_process')
 var moment = require('moment')
+require('console-stamp')(console, 'mmm/dd/yyyy | HH:MM:ss.l')
 // var pg = require('pg')
 // var config = require('../import/config.json')
 // var client = new pg.Client(config.connectionString)
@@ -32,27 +33,51 @@ async function downloadDay (dateStr) {
     await queryLimiter.removeTokens(1)
     var matchesStats = await HLTV.getMatchesStats({
       startDate: dateStr,
+      // TODO(jcm): Test longer time-periods and/or confirm how gigobyte/hltv
+      // handles many matchesStat results (rate-limit concern)
       endDate: dateStr,
       matchType: matchType.LAN
     })
+    console.log(`Starting ${dateStr}`)
   } catch (err) {
-    console.log('HLTV.getMatchesStats error')
+    console.log(`${dateStr} HLTV.getMatchesStats error`)
     console.dir(err)
   }
 
-  // for (let i = 0; i < MatchesStats.length; i++){
-  // for (let i = 0; i < 5; i++){
+  console.log(`${matchesStats.length} results for ${dateStr}`)
+
+  // Do not download/import new maps if mms_id in Map table (save HLTV load by
+  // catching before further HLTV requests are made)
   matchesStats.forEach(async (matchStats, msi, arr) => {
-    // if (msi >= 5) {
-      // return null
-    // }
+    await Models.Map.findAll({
+      attributes: ['mms_id'],
+      where: { mms_id: matchStats.id }
+    })
+      .then(async res => {
+        if (res.length === 0) { // If we don't have that mms_id in the Maps
+          // console.log(`mms_id:${matchStats.id} not in Map table`)
+        } else {
+          console.log(`mms_id:${MatchStats.id} has {res.length} entries in Maps already, skipping. . . `)
+          // Indicate that we don't want to re-import this, might be necessary
+          // if 1 or more maps from match is in DB, but another is missing,
+          // don't need to re-import something we already have TODO(jcm):
+          // perhaps compare hashes of the file?
+          orphanMapStats.push({ json: null, MapStatsID: matchStats.id })
+          return null
+        }
+      })
+    // Cap at 16 per day for now
+    if (msi >= 16) {
+      return null
+    }
     try {
       await queryLimiter.removeTokens(1)
       var matchMapStats = await HLTV.getMatchMapStats({
         id: matchStats.id
       })
+      var mapDate = new Date(matchMapStats.date).toUTCString()
     } catch (err) {
-      console.log('HLTV.getMatchMapStats error')
+      console.log(`${matchStats.id}|matchMapStats.matchPageID|${mapDate} HLTV.getMatchMapStats error`)
       console.dir(err)
     }
 
@@ -62,7 +87,7 @@ async function downloadDay (dateStr) {
         id: matchMapStats.matchPageID
       })
     } catch (err) {
-      console.log('HLTV.getmatchMapStats error')
+      console.log(`${matchStats.id}|matchMapStats.matchPageID|${mapDate} HLTV.getMatch error`)
       console.dir(err)
     }
 
@@ -75,18 +100,19 @@ async function downloadDay (dateStr) {
       }
       while (curImport)
 
-      MatchSQL.findAll({
+      await Models.Match.findAll({
         attributes: ['match_id'],
         where: { match_id: match.id }
       }).then(async res => {
-        if (res.length == 0) { // If we don't have that match_id in the DB already
+        if (res.length === 0) { // If we don't have that match_id in the Match table
           curImport = match.id
           await importMatch(match).then(curImport = '')
         } else {
-          if (res[0].dataValues.match_id == match.id) {
+          if (res[0].dataValues.match_id === match.id) {
             orphanMapStats.push({ json: matchMapStats, MapStatsID: matchStats.id })
-            console.log(`Match ${match.id} is in the DB already.`)
-            return null // If we have the match already, in the DB, don't bother trying to DL the demos.
+            // With this only one map(Match)Stats id (mms_id) will trigger an attempt to download the demos
+            // console.log(`${matchStats.id}|${match.id} sent to orphanMapStats. Already in Match table, skipping download. . .`)
+            return null
           } else {
             console.log('Wut.')
           }
@@ -101,42 +127,45 @@ async function downloadDay (dateStr) {
       while (concurDL >= 2)
 
       downloadMatch(match, matchMapStats, matchStats.id).then(async fulfilled => {
-        console.log(`\t\t\t\tImporting demos for Match: ${match.id} || {dateStr}`)
-
         fulfilled.demos.forEach(async (demo) => {
           // Is the current matchMapStats appropriate for the demo?
           var haveMapStats = demo.match(MapDict[matchMapStats.map])
-          var importmatchMapStats
-          var importmatchMapStatsID
+          var importMatchMapStats
+          var importMatchMapStatsID
           if (haveMapStats) {
-            importmatchMapStats = matchMapStats
-            importmatchMapStatsID = matchStats.id
+            importMatchMapStats = matchMapStats
+            importMatchMapStatsID = matchStats.id
           } else { // If not, check orphans
             var matchingOrphans = orphanMapStats.filter(ms => {
               var sameMap = demo.match(MapDict[ms.json.map])
-              return ((ms.json.matchPageID == match.id) && sameMap)
+              return ((ms.json.matchPageID === match.id) && sameMap)
             })
             if (matchingOrphans.length >= 1) {
-              console.log(matchingOrphans)
-              importmatchMapStats = matchingOrphans[0].json
-              importmatchMapStatsID = matchingOrphans[0].MapStatsID
+              if (matchingOrphans[0].json === null) { // only happens if mms_id already in Map table
+                console.log(`Orphan for ${matchStats.id}|${match.id} found, but mms_id is already in Map table, skipping import. . .`)
+                return null // Skip importing this demo
+              }
+              console.log(`${matchingOrphans.length} Orphan(s) for ${matchStats.id}|${match.id} found`)
+              importMatchMapStats = matchingOrphans[0].json
+              importMatchMapStatsID = matchingOrphans[0].MapStatsID
             } else {
               // Go download the matchMapStats real quick (could be possible
               // if games in match were played before/after midnight
               console.log(demo)
               console.log(orphanMapStats)
               var missingMapStats = match.maps.filter(map => demo.match(MapDict[map.name]))
-              if (missingMapStats.length == 1) {
+              if (missingMapStats.length === 1) {
                 missingMapStats = missingMapStats[0]
                 await queryLimiter.removeTokens(1)
-                importmatchMapStats = await HLTV.getMatchMapStats({
+                importMatchMapStats = await HLTV.getMatchMapStats({
                   id: missingMapStats.statsId
                 })
-                importmatchMapStatsID = missingMapStats.statsId
+                importMatchMapStatsID = missingMapStats.statsId
               }
-              console.log(`\t\t\tFetched matchMapStats: ${missingMapStats.statsId} for ${match.id}/${demo}`)
+              console.log(`\t\t\t ${importMatchMapStatsID}/${match.id} Fetched matchMapStats. (No orphans found.)`)
             }
           }
+
           do {
             // Snoozes function without pausing event loop
             await snooze(1000)
@@ -144,17 +173,17 @@ async function downloadDay (dateStr) {
           }
           while (curImport)
 
-          curImport = match.id + '|' + demo
-          await importDemo(fulfilled.out_dir + demo, importmatchMapStats, importmatchMapStatsID, match).then(() => {
+          curImport = importMatchMapStatsID + '|' + match.id
+          await importDemo(fulfilled.outDir + demo, importMatchMapStats, importMatchMapStatsID, match).then(() => {
             curImport = ''
           }).catch((err) => {
-            console.dir('Error importing demo')
+            console.dir(`${importMatchMapStatsID}|${match.id} Error importing demo`)
             console.log(err)
-            problemImports.push(match)
+            problemImports.push({ match: match, matchMapStats: importMatchMapStats })
           })
         })
         // After importing all demos for the match, remove the orphan(s) used.
-        orphanMapStats = orphanMapStats.filter(ms => ms.json.matchPageID != match.id)
+        orphanMapStats = orphanMapStats.filter(ms => ms.json.matchPageID !== match.id)
       }).catch(() => '')
     } catch (err) {
       console.log(err)
@@ -167,41 +196,44 @@ setTimeout(function () {
 
 const snooze = ms => new Promise(resolve => setTimeout(resolve, ms))
 
-async function downloadMatch (Match, matchMapStats, matchMapStatsID) {
-  var demo_link = Match.demos.filter(demo => demo.name === 'GOTV Demo')[0].link
-  demo_link = apiConfig.hltvUrl + demo_link
+async function downloadMatch (match, matchMapStats, matchMapStatsID) {
+  var demoLink = match.demos.filter(demo => demo.name === 'GOTV Demo')[0].link
+  demoLink = apiConfig.hltvUrl + demoLink
 
-  var out_dir = '/home/jcm/matches/' + Match.id + '/'
-  var out_path = out_dir + 'archive.rar'
+  var outDir = '/home/jcm/matches/' + match.id + '/'
+  var outPath = outDir + 'archive.rar'
 
-  if (!fs.existsSync(out_dir)) {
-    fs.mkdirSync(out_dir, { recursive: true })
-    // console.log("%d folder created.", Match.id)
+  if (!fs.existsSync(outDir)) {
+    fs.mkdirSync(outDir, { recursive: true })
+    // console.log("%d folder created.", match.id)
   }
 
   return new Promise((resolve, reject) => {
     concurDL += 1
-    var out = fs.createWriteStream(out_path, { flags: 'wx' })
-      .on('error', () => {
+    var out = fs.createWriteStream(outPath, { flags: 'wx' })
+      .on('error', (e) => {
+        // TODO(jcm): Can check download status (or file stream activity?) of
+        // .rar archives and .dem files to not have to re-download (HLTV load)
+        // or re-extract (user performance). Rejecting for now
         concurDL -= 1
-        reject(`${Match.id} already downloaded or downloading (${out_path}), skipping. . .`)
+        reject(`${match.id} already downloaded or downloading (${outPath}), skipping. . .`)
       })
       .on('ready', () => {
-        console.log('%d starting download. . .', Match.id)
+        console.log(`|${match.id} starting download. . .`)
 
-        new FetchStream(demo_link)
+        new FetchStream(demoLink)
           .pipe(out)
           .on('error', err => console.log(err, null)) // Could get 503 (others too possib.) log those for checking later?
           .on('finish', async () => {
-            console.log('%d archive downloaded', Match.id)
+            console.log(`|${match.id} archive downloaded`)
             concurDL -= 1
             try {
-              var demos = await extractArchive(out_path, out_dir)
+              var demos = await extractArchive(outPath, outDir)
             } catch (err) {
               console.dir(err)
             }
             resolve({
-              out_dir: out_dir,
+              outDir: outDir,
               demos: demos || undefined
             }
             )
@@ -211,13 +243,10 @@ async function downloadMatch (Match, matchMapStats, matchMapStatsID) {
 }
 
 // Rudimentary function to download a lot of days
-async function downloadDays(startDateStr, numDays) {
+async function downloadDays (startDateStr, numDays) {
   var startDate = moment(startDateStr)
   for (let i = 0; i < numDays; i++) {
-    downloadDay(startDate.add(i, numDays).format("YYYY-MM-DD")).then( () => {
-      exec('rm -rf ~/matches/*.dem')
-      exec('rm -rf ~/matches/*.rar')
-    })
+    downloadDay(startDate.add(i, 'd').format('YYYY-MM-DD'))
   }
 }
 
@@ -226,8 +255,8 @@ async function downloadDays(startDateStr, numDays) {
 // var test_getMatch = JSON.parse(fs.readFileSync('./test_getMatch.txt'))
 // downloadMatch(test_getMatch, test_getMatchMapStats)
 // downloadDay('2019-11-02').then(() => {
-  // exec('rm -rf ~/matches/*.dem')
-  // exec('rm -rf ~/matches/*.rar')
+// exec('rm -rf ~/matches/*.dem')
+// exec('rm -rf ~/matches/*.rar')
 // })
 //
 
