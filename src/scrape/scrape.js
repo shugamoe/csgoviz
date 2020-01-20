@@ -189,7 +189,6 @@ async function downloadDay (dateStr) {
         console.log(`${matchStats.id}|${matchMapStats.matchPageID}|${mapDate}`)
         console.log(err)
       })
-    }
   })
 }
 
@@ -218,17 +217,17 @@ async function downloadMatch (match, matchMapStats, matchMapStatsID) {
         // .rar archives and .dem files to not have to re-download (HLTV load)
         // or re-extract (user performance). Rejecting for now
         concurDL -= 1
-        console.log(`${match.id} already downloaded or downloading (${outPath}), skipping. . .`)
+        console.log(`${matchMapStats.id}|${match.id} already downloaded or downloading (${outPath}), skipping. . .`)
         reject(e)
       })
       .on('ready', () => {
-        console.log(`|${match.id} starting download. . .`)
+        console.log(`${matchMapStatsID}|${match.id} starting download. . .`)
 
         new FetchStream(demoLink)
           .pipe(out)
           .on('error', err => console.log(err, null)) // Could get 503 (others too possib.) log those for checking later?
           .on('finish', async () => {
-            console.log(`|${match.id} archive downloaded`)
+            console.log(`${matchMapStatsID}|${match.id} archive downloaded`)
             concurDL -= 1
             try {
               var demos = await extractArchive(outPath, outDir, match.id)
