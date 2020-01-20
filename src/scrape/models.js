@@ -100,7 +100,15 @@ var Map = db.define('map', {
   mms_data: {type: Sequelize.JSONB, allowNull: true},
   mms_id: {type: Sequelize.INTEGER, allowNull: false, primaryKey: true}, // MatchMapStat ID
   match_id: {type: Sequelize.INTEGER, allowNull: false}
-});
+}, {
+  indexes: [
+    {
+      fields: ['data'],
+      using: 'gin',
+      operator: 'jsonb_ops'
+    }
+  ]}
+);
 
 var Match = db.define('match', {
   match_id: {type: Sequelize.INTEGER, allowNull: false, primaryKey: true},
@@ -108,7 +116,15 @@ var Match = db.define('match', {
   data: {type: Sequelize.JSONB},
   maps_played: {type: Sequelize.INTEGER, allowNull: false},
   maps: {type: Sequelize.INTEGER, allowNull: false}
-});
+}, {
+  indexes: [
+    {
+      fields: ['data'],
+      using: 'gin',
+      operator: 'jsonb_ops'
+    }
+  ]}
+);
 
 Map.hasMany(Event, {allowNull: false, onDelete: 'cascade'});
 Map.hasMany(EntityProp, {allowNull: false, onDelete: 'cascade'});

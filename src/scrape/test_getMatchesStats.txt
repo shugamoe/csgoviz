@@ -1,0 +1,359 @@
+[
+  {
+    "id": 94491,
+    "date": 1572783300000,
+    "map": "d2",
+    "team1": {
+      "id": 6898,
+      "name": "BOOT"
+    },
+    "team2": {
+      "id": 9107,
+      "name": "BTRG"
+    },
+    "event": {
+      "id": 4956,
+      "name": "WESG 2019 SEA Finals"
+    },
+    "result": {
+      "team1": 17,
+      "team2": 19
+    }
+  },
+  {
+    "id": 94488,
+    "date": 1572783300000,
+    "map": "mrg",
+    "team1": {
+      "id": 6898,
+      "name": "BOOT"
+    },
+    "team2": {
+      "id": 9107,
+      "name": "BTRG"
+    },
+    "event": {
+      "id": 4956,
+      "name": "WESG 2019 SEA Finals"
+    },
+    "result": {
+      "team1": 12,
+      "team2": 16
+    }
+  },
+  {
+    "id": 94476,
+    "date": 1572768000000,
+    "map": "nuke",
+    "team1": {
+      "id": 7024,
+      "name": "EHOME"
+    },
+    "team2": {
+      "id": 7606,
+      "name": "ViCi"
+    },
+    "event": {
+      "id": 4984,
+      "name": "CS:GO Asia Championships 2019 China Qualifier"
+    },
+    "result": {
+      "team1": 14,
+      "team2": 16
+    }
+  },
+  {
+    "id": 94472,
+    "date": 1572768000000,
+    "map": "mrg",
+    "team1": {
+      "id": 7606,
+      "name": "ViCi"
+    },
+    "team2": {
+      "id": 7024,
+      "name": "EHOME"
+    },
+    "event": {
+      "id": 4984,
+      "name": "CS:GO Asia Championships 2019 China Qualifier"
+    },
+    "result": {
+      "team1": 16,
+      "team2": 14
+    }
+  },
+  {
+    "id": 94470,
+    "date": 1572768000000,
+    "map": "inf",
+    "team1": {
+      "id": 7024,
+      "name": "EHOME"
+    },
+    "team2": {
+      "id": 7606,
+      "name": "ViCi"
+    },
+    "event": {
+      "id": 4984,
+      "name": "CS:GO Asia Championships 2019 China Qualifier"
+    },
+    "result": {
+      "team1": 10,
+      "team2": 16
+    }
+  },
+  {
+    "id": 94475,
+    "date": 1572768000000,
+    "map": "ovp",
+    "team1": {
+      "id": 8008,
+      "name": "Grayhound"
+    },
+    "team2": {
+      "id": 8848,
+      "name": "Alpha Red"
+    },
+    "event": {
+      "id": 4836,
+      "name": "OMEN Challenger Series 2019"
+    },
+    "result": {
+      "team1": 16,
+      "team2": 14
+    }
+  },
+  {
+    "id": 94471,
+    "date": 1572768000000,
+    "map": "d2",
+    "team1": {
+      "id": 8008,
+      "name": "Grayhound"
+    },
+    "team2": {
+      "id": 8848,
+      "name": "Alpha Red"
+    },
+    "event": {
+      "id": 4836,
+      "name": "OMEN Challenger Series 2019"
+    },
+    "result": {
+      "team1": 16,
+      "team2": 3
+    }
+  },
+  {
+    "id": 94469,
+    "date": 1572768000000,
+    "map": "inf",
+    "team1": {
+      "id": 8848,
+      "name": "Alpha Red"
+    },
+    "team2": {
+      "id": 8008,
+      "name": "Grayhound"
+    },
+    "event": {
+      "id": 4836,
+      "name": "OMEN Challenger Series 2019"
+    },
+    "result": {
+      "team1": 16,
+      "team2": 13
+    }
+  },
+  {
+    "id": 94468,
+    "date": 1572757200000,
+    "map": "ovp",
+    "team1": {
+      "id": 7606,
+      "name": "ViCi"
+    },
+    "team2": {
+      "id": 7092,
+      "name": "5POWER"
+    },
+    "event": {
+      "id": 4984,
+      "name": "CS:GO Asia Championships 2019 China Qualifier"
+    },
+    "result": {
+      "team1": 16,
+      "team2": 7
+    }
+  },
+  {
+    "id": 94466,
+    "date": 1572757200000,
+    "map": "trn",
+    "team1": {
+      "id": 7092,
+      "name": "5POWER"
+    },
+    "team2": {
+      "id": 7606,
+      "name": "ViCi"
+    },
+    "event": {
+      "id": 4984,
+      "name": "CS:GO Asia Championships 2019 China Qualifier"
+    },
+    "result": {
+      "team1": 12,
+      "team2": 16
+    }
+  },
+  {
+    "id": 94467,
+    "date": 1572750000000,
+    "map": "ovp",
+    "team1": {
+      "id": 10206,
+      "name": "Bren"
+    },
+    "team2": {
+      "id": 8848,
+      "name": "Alpha Red"
+    },
+    "event": {
+      "id": 4836,
+      "name": "OMEN Challenger Series 2019"
+    },
+    "result": {
+      "team1": 8,
+      "team2": 16
+    }
+  },
+  {
+    "id": 94465,
+    "date": 1572750000000,
+    "map": "d2",
+    "team1": {
+      "id": 10206,
+      "name": "Bren"
+    },
+    "team2": {
+      "id": 8848,
+      "name": "Alpha Red"
+    },
+    "event": {
+      "id": 4836,
+      "name": "OMEN Challenger Series 2019"
+    },
+    "result": {
+      "team1": 9,
+      "team2": 16
+    }
+  },
+  {
+    "id": 94462,
+    "date": 1572750000000,
+    "map": "inf",
+    "team1": {
+      "id": 8848,
+      "name": "Alpha Red"
+    },
+    "team2": {
+      "id": 10206,
+      "name": "Bren"
+    },
+    "event": {
+      "id": 4836,
+      "name": "OMEN Challenger Series 2019"
+    },
+    "result": {
+      "team1": 14,
+      "team2": 16
+    }
+  },
+  {
+    "id": 94464,
+    "date": 1572747900000,
+    "map": "inf",
+    "team1": {
+      "id": 8680,
+      "name": "Lucid Dream"
+    },
+    "team2": {
+      "id": 10310,
+      "name": "Darkhorse"
+    },
+    "event": {
+      "id": 4956,
+      "name": "WESG 2019 SEA Finals"
+    },
+    "result": {
+      "team1": 16,
+      "team2": 13
+    }
+  },
+  {
+    "id": 94461,
+    "date": 1572747900000,
+    "map": "d2",
+    "team1": {
+      "id": 10310,
+      "name": "Darkhorse"
+    },
+    "team2": {
+      "id": 8680,
+      "name": "Lucid Dream"
+    },
+    "event": {
+      "id": 4956,
+      "name": "WESG 2019 SEA Finals"
+    },
+    "result": {
+      "team1": 11,
+      "team2": 16
+    }
+  },
+  {
+    "id": 94463,
+    "date": 1572747600000,
+    "map": "mrg",
+    "team1": {
+      "id": 8008,
+      "name": "Grayhound"
+    },
+    "team2": {
+      "id": 7581,
+      "name": "Absolute"
+    },
+    "event": {
+      "id": 4836,
+      "name": "OMEN Challenger Series 2019"
+    },
+    "result": {
+      "team1": 16,
+      "team2": 14
+    }
+  },
+  {
+    "id": 94460,
+    "date": 1572747600000,
+    "map": "inf",
+    "team1": {
+      "id": 7581,
+      "name": "Absolute"
+    },
+    "team2": {
+      "id": 8008,
+      "name": "Grayhound"
+    },
+    "event": {
+      "id": 4836,
+      "name": "OMEN Challenger Series 2019"
+    },
+    "result": {
+      "team1": 11,
+      "team2": 16
+    }
+  }
+]

@@ -1,7 +1,7 @@
 'use strict';
 
 var Sequelize = require('sequelize');
-const config = require('./config.json');
+const config = require('./dbCon.json');
 
 let options = {
   logging: false,
