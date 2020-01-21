@@ -29,11 +29,8 @@ var problemImports = []
 var concurDL = 0
 var curImport = ''
 async function downloadDay (dateStr) {
-  do {
-    // Snoozes function without pausing event loop
-    await snooze(1000)
-  }
-  while (curImport)
+  // TODO(jcm): Have restart functionality in case the catch blocks are
+  // encountered (happens after a while?)
   try {
     await queryLimiter.removeTokens(1)
     var matchesStats = await HLTV.getMatchesStats({
