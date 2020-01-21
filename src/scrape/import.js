@@ -324,6 +324,7 @@ function importDemoBuffer (client, buffer, matchMapStatsID, callback) {
  * @returns {Promise}
  */
 function importDemoFile (path, matchMapStats, matchMapStatsID, match) {
+  var commitFail
   // console.log('Connecting to database...');
   var matchDate = moment(match.date).format('YYYY-MM-DD h:mm:ss ZZ')
   console.log(`${matchMapStatsID}|${matchMapStats.matchPageID}|${matchDate} starting import to Map table.`)
@@ -385,6 +386,7 @@ function importDemoFile (path, matchMapStats, matchMapStatsID, match) {
 
     .then(() => {
       // console.log(`${matchMapStatsID}|${match.id} committing transaction...`);
+      commitFail = false
       return query('COMMIT')
     })
 
@@ -392,12 +394,17 @@ function importDemoFile (path, matchMapStats, matchMapStatsID, match) {
       console.error(e.stack)
 
       console.log('ERROR!! Rolling back...')
+      commitFail = true
       return query('ROLLBACK')
     })
 
     .then(() => {
       var matchDate = moment(match.date).format('YYYY-MM-DD h:mm:ss ZZ')
-      console.log(`${matchMapStatsID}|${match.id}|${matchDate} imported to Map table.`)
+      if (commitFail === true) {
+        console.log(`${matchMapStatsID}|${match.id}|${matchDate} Map table import fail.`)
+      } else {
+        console.log(`${matchMapStatsID}|${match.id}|${matchDate} imported to Map table.`)
+      }
       client.end()
       // pg.end();
     })

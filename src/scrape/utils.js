@@ -6,7 +6,7 @@ function extractArchive (archPath, targetDir, matchID) {
   return new Promise(async (resolve, reject) => {
     console.log(`|${matchID} Extracting . . .`)
     try {
-      await unrar(archPath, targetDir)
+      await unrar(archPath, targetDir, {overwrite: true})
       resolve(list(archPath))
     } catch (err) {
       console.dir(err)

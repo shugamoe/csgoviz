@@ -29,6 +29,11 @@ var problemImports = []
 var concurDL = 0
 var curImport = ''
 async function downloadDay (dateStr) {
+  do {
+    // Snoozes function without pausing event loop
+    await snooze(1000)
+  }
+  while (curImport)
   try {
     await queryLimiter.removeTokens(1)
     var matchesStats = await HLTV.getMatchesStats({
@@ -41,7 +46,7 @@ async function downloadDay (dateStr) {
     console.log(`Starting ${dateStr}`)
   } catch (err) {
     console.log(`${dateStr} HLTV.getMatchesStats error`)
-    console.dir(err)
+    console.log(err)
   }
 
   console.log(`${matchesStats.length} results for ${dateStr}`)
@@ -76,8 +81,8 @@ async function downloadDay (dateStr) {
       })
       var mapDate = new Date(matchMapStats.date).toUTCString()
     } catch (err) {
-      console.log(`${matchStats.id}|| HLTV.getMatchMapStats error`)
-      console.dir(err)
+      console.log(`${matchStats.id}||${dateStr} HLTV.getMatchMapStats error`)
+      console.log(err)
     }
 
     try {
@@ -87,7 +92,7 @@ async function downloadDay (dateStr) {
       })
     } catch (err) {
       console.log(`${matchStats.id}|${matchMapStats.matchPageID}|${mapDate} HLTV.getMatch error`)
-      console.dir(err)
+      console.log(err)
     }
 
     // Download demo archive
@@ -140,11 +145,11 @@ async function downloadDay (dateStr) {
               console.log(`Orphan for ${matchStats.id}|${match.id} found, but mms_id is already in Map table, skipping import. . .`)
               return null // Skip importing this demo
             }
-            console.log(`${matchStats.id}|${match.id} ${matchingOrphans.length} Orphan(s) found`)
             importMatchMapStats = matchingOrphans[0].json
             importMatchMapStatsID = matchingOrphans[0].MapStatsID
+            console.log(`${importMatchMapStatsID}|${match.id} ${matchingOrphans.length} Orphan(s) found`)
 
-            // Clear mms_id from Orphans
+            // Clear entry from Orphans
             orphanMapStats = orphanMapStats.filter(ms => ms.MapStatsID !== importMatchMapStatsID)
           } else {
             // Go download the matchMapStats real quick (could be possible
@@ -176,18 +181,18 @@ async function downloadDay (dateStr) {
         await importDemo(fulfilled.outDir + demo, importMatchMapStats, importMatchMapStatsID, match).then(() => {
           curImport = ''
         }).catch((err) => {
-          console.dir(`${importMatchMapStatsID}|${match.id} Error importing demo`)
+          console.log(`${importMatchMapStatsID}|${match.id} Error importing demo`)
           console.log(err)
           problemImports.push({ match: match, matchMapStats: importMatchMapStats })
         })
         // Remove .dem file (it's sitting in the .rar archive anyway), can optionally kill
-        exec(`rm ${fulfilled.outDir + demo}`) 
+        exec(`rm ${fulfilled.outDir + demo}`)
       })
       // Optionally remove .rar archive?
-        exec(`rm -rf ${fulfilled.outDir + 'archive.rar'}`) 
+      // exec(`rm -rf ${fulfilled.outDir + 'archive.rar'}`)
     })
       .catch((err) => {
-        console.log(`${matchStats.id}|${matchMapStats.matchPageID}|${mapDate}`)
+        console.log(`${matchStats.id}|${matchMapStats.matchPageID}|${mapDate} error in downloadMatch`)
         console.log(err)
       })
   })
@@ -240,7 +245,7 @@ async function downloadMatch (match, matchMapStats, matchMapStatsID, matchStats)
               demos: dems
             })
           }
-          })
+        })
       })
       .on('ready', () => {
         console.log(`${matchMapStatsID}|${match.id} starting download. . .`)
@@ -254,7 +259,7 @@ async function downloadMatch (match, matchMapStats, matchMapStatsID, matchStats)
             try {
               var demos = await extractArchive(outPath, outDir, match.id)
             } catch (err) {
-              console.dir(err)
+              console.log(err)
             }
             resolve({
               outDir: outDir,
@@ -270,13 +275,12 @@ async function downloadMatch (match, matchMapStats, matchMapStatsID, matchStats)
 async function downloadDays (startDateStr, endDateStr) {
   var startDate = moment(startDateStr)
   var endDate = moment(endDateStr)
-  var dlDate = startDate
-  while (dlDate.toString() !== endDate.toString()) {
-    await downloadDay(dlDate.format('YYYY-MM-DD'))
-    dlDate.add(1, 'd')
-  }
-  var thing = await downloadDay(endDate.format('YYYY-MM-DD'))
-  console.log(`Downloaded from ${startDateStr} to ${endDateStr} | ${thing}`)
+  var deltaDays = moment.duration(endDate.diff(startDate)).days()
+  var addDays = Array(deltaDays + 1) // so we can use .forEach
+  addDays.forEach(async () => {
+    await downloadDay(startDate.format('YYYY-MM-DD'))
+    startDate.add(1, 'd')
+  })
 }
 
 // var test_getMatchesStats = JSON.parse(fs.readFileSync('./test_getMatchesStats.txt', 'utf8'))
@@ -289,4 +293,4 @@ async function downloadDays (startDateStr, endDateStr) {
 // })
 //
 
-downloadDays('2019-10-31', '2019-11-07')
+downloadDays('2019-10-31', '2019-11-21')
