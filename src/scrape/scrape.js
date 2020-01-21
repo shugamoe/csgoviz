@@ -160,7 +160,7 @@ async function downloadDay (dateStr) {
               })
               importMatchMapStatsID = missingMapStats.statsId
             }
-            var matchDate = moment(match.date).toString('YYYY-MM-DD')
+            var matchDate = moment(match.date).format('YYYY-MM-DD')
             console.log(`${importMatchMapStatsID}|${match.id}|${matchDate} Fetched matchMapStats. (No orphans found.)`)
           }
         }
@@ -250,7 +250,7 @@ async function downloadDays (startDateStr, endDateStr) {
     await downloadDay(dlDate.format('YYYY-MM-DD'))
     dlDate.add(1, 'd')
   }
-  await downloadDay(endDate.format('YYYY-MM-DD'))
+  var thing = await downloadDay(endDate.format('YYYY-MM-DD'))
   console.log(`Downloaded from ${startDateStr} to ${endDateStr}`)
 }
 
@@ -264,4 +264,4 @@ async function downloadDays (startDateStr, endDateStr) {
 // })
 //
 
-downloadDays('2019-11-01', '2019-11-07')
+downloadDays('2019-10-31', '2019-11-07')

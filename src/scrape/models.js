@@ -117,7 +117,7 @@ var Match = db.define('match', {
   date: { type: Sequelize.DATE, allowNull: false },
   data: { type: Sequelize.JSONB },
   maps_played: { type: Sequelize.INTEGER, allowNull: false },
-  maps: { type: Sequelize.INTEGER, allowNull: false } // TODO(jcm): rename this to maps_max
+  maps_max: { type: Sequelize.INTEGER, allowNull: false } // TODO(jcm): rename this to maps_max
 }, {
   indexes: [
     {
