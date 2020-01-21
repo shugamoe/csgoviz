@@ -49,24 +49,22 @@ async function downloadDay (dateStr) {
   // Do not download/import new maps if mms_id in Map table (save HLTV load by
   // catching before further HLTV requests are made)
   matchesStats.forEach(async (matchStats, msi, arr) => {
-    await Models.Map.findAll({
+    var dbHasMap = await Models.Map.findAll({
       attributes: ['mms_id'],
       where: { mms_id: matchStats.id }
     })
-      .then(async res => {
-        if (res.length === 0) { // If we don't have that mms_id in the Maps
-          // console.log(`mms_id:${matchStats.id} not in Map table`)
-          // TODO(jcm): maybe gather up some of these commented out comments to be a debug=true print only?
-        } else {
-          console.log(`${matchStats.id}| has ${res.length} entries in Maps already, skipping. . . `)
-          // Indicate that we don't want to re-import this, might be necessary
-          // if 1 or more maps from match is in DB, but another is missing,
-          // don't need to re-import something we already have TODO(jcm):
-          // perhaps compare hashes of the file?
-          orphanMapStats.push({ json: null, MapStatsID: matchStats.id, matchPageID: null, map: matchStats.map, skip: true})
-          return null
-        }
-      })
+    if (dbHasMap.length === 0) { // If we don't have that mms_id in the Maps
+      // console.log(`mms_id:${matchStats.id} not in Map table`)
+      // TODO(jcm): maybe gather up some of these commented out comments to be a debug=true print only?
+    } else {
+      console.log(`${matchStats.id}| has ${dbHasMap.length} entries in Maps already, skipping. . . `)
+      // Indicate that we don't want to re-import this, might be necessary
+      // if 1 or more maps from match is in DB, but another is missing,
+      // don't need to re-import something we already have TODO(jcm):
+      // perhaps compare hashes of the file?
+      orphanMapStats.push({ json: null, MapStatsID: matchStats.id, matchPageID: null, map: matchStats.map, skip: true})
+      return null
+    }
     // Cap at 16 per day for now
     // if (msi >= 16) {
       // return null
@@ -100,24 +98,19 @@ async function downloadDay (dateStr) {
     }
     while (curImport)
 
-    await Models.Match.findAll({
+    var dbHasMatch = await Models.Match.findAll({
       attributes: ['match_id'],
       where: { match_id: match.id }
-    }).then(async res => {
-      if (res.length === 0) { // If we don't have that match_id in the Match table
-        curImport = match.id
-        await importMatch(match).then(curImport = '')
-      } else {
-        if (res[0].dataValues.match_id === match.id) {
-          orphanMapStats.push({ json: matchMapStats, MapStatsID: matchStats.id, matchPageID: matchMapStats.matchPageID, map: matchMapStats.map})
-          // With this only one map(Match)Stats id (mms_id) will trigger an attempt to download the demos
-          // console.log(`${matchStats.id}|${match.id} sent to orphanMapStats. Already in Match table, skipping download. . .`)
-          return null
-        } else {
-          console.log('Wut.')
-        }
-      }
     })
+    if (dbHasMatch.length === 0) { // If we don't have that match_id in the Match table
+      curImport = match.id
+      await importMatch(match).then(curImport = '')
+    } else {
+      orphanMapStats.push({ json: matchMapStats, MapStatsID: matchStats.id, matchPageID: matchMapStats.matchPageID, map: matchMapStats.map})
+      // With this only one map(Match)Stats id (mms_id) will trigger an attempt to download the demos
+      // console.log(`${matchStats.id}|${match.id} sent to orphanMapStats. Already in Match table, skipping download. . .`)
+      return null
+    }
 
     do {
       // Snoozes function without pausing event loop
