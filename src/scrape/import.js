@@ -325,7 +325,7 @@ function importDemoBuffer (client, buffer, matchMapStatsID, callback) {
  */
 function importDemoFile (path, matchMapStats, matchMapStatsID, match) {
   // console.log('Connecting to database...');
-  var matchDate = moment(match.date).toString('YYYY-MM-DD')
+  var matchDate = moment(match.date).format('YYYY-MM-DD h:mm:ss ZZ')
   console.log(`${matchMapStatsID}|${matchMapStats.matchPageID}|${matchDate} starting import to Map table.`)
   var client = new pg.Client(dbCon.connectionString)
 
@@ -396,7 +396,7 @@ function importDemoFile (path, matchMapStats, matchMapStatsID, match) {
     })
 
     .then(() => {
-      var matchDate = moment(match.date).format('YYYY-MM-DD')
+      var matchDate = moment(match.date).format('YYYY-MM-DD h:mm:ss ZZ')
       console.log(`${matchMapStatsID}|${match.id}|${matchDate} imported to Map table.`)
       client.end()
       // pg.end();
@@ -451,7 +451,7 @@ function importMatch (match) {
     })
 
     .then(() => {
-      var matchDate = moment(match.date).format('YYYY-MM-DD')
+      var matchDate = moment(match.date).format('YYYY-MM-DD h:mm:ss ZZ')
       console.log(`|${match.id}|${matchDate} imported to Match table.`)
       client.end()
       // pg.end();

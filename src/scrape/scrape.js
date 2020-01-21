@@ -62,12 +62,12 @@ async function downloadDay (dateStr) {
       // if 1 or more maps from match is in DB, but another is missing,
       // don't need to re-import something we already have TODO(jcm):
       // perhaps compare hashes of the file?
-      orphanMapStats.push({ json: null, MapStatsID: matchStats.id, matchPageID: null, map: matchStats.map, skip: true})
+      orphanMapStats.push({ json: null, MapStatsID: matchStats.id, matchPageID: null, map: matchStats.map, skip: true })
       return null
     }
     // Cap at 16 per day for now
     // if (msi >= 16) {
-      // return null
+    // return null
     // }
     try {
       await queryLimiter.removeTokens(1)
@@ -106,7 +106,7 @@ async function downloadDay (dateStr) {
       curImport = match.id
       await importMatch(match).then(curImport = '')
     } else {
-      orphanMapStats.push({ json: matchMapStats, MapStatsID: matchStats.id, matchPageID: matchMapStats.matchPageID, map: matchMapStats.map})
+      orphanMapStats.push({ json: matchMapStats, MapStatsID: matchStats.id, matchPageID: matchMapStats.matchPageID, map: matchMapStats.map })
       // With this only one map(Match)Stats id (mms_id) will trigger an attempt to download the demos
       // console.log(`${matchStats.id}|${match.id} sent to orphanMapStats. Already in Match table, skipping download. . .`)
       return null
@@ -160,7 +160,7 @@ async function downloadDay (dateStr) {
               })
               importMatchMapStatsID = missingMapStats.statsId
             }
-            var matchDate = moment(match.date).format('YYYY-MM-DD')
+            var matchDate = moment(match.date).format('YYYY-MM-DD h:mm:ss ZZ')
             console.log(`${importMatchMapStatsID}|${match.id}|${matchDate} Fetched matchMapStats. (No orphans found.)`)
           }
         }
@@ -247,10 +247,10 @@ async function downloadDays (startDateStr, endDateStr) {
   var endDate = moment(endDateStr)
   var dlDate = startDate
   while (dlDate.toString() !== endDate.toString()) {
-    await downloadDay(dlDate.format('YYYY-MM-DD'))
+    await downloadDay(dlDate.format('YYYY-MM-DD h:mm:ss ZZ'))
     dlDate.add(1, 'd')
   }
-  var thing = await downloadDay(endDate.format('YYYY-MM-DD'))
+  var thing = await downloadDay(endDate.format('YYYY-MM-DD h:mm:ss ZZ'))
   console.log(`Downloaded from ${startDateStr} to ${endDateStr}`)
 }
 
