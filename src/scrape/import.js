@@ -430,7 +430,7 @@ function importMatch (match) {
 
     .then(() => {
       var mapsPlayed = match.maps.filter(ms => ms.statsId > 0).length // Ignore unplayed maps
-      return query('INSERT INTO matches (match_id, date, data, maps_played, maps) VALUES ($1, $2, $3, $4, $5)', [
+      return query('INSERT INTO matches (match_id, date, data, maps_played, maps_max) VALUES ($1, $2, $3, $4, $5)', [
         match.id,
         new Date(match.date).toUTCString(),
         JSON.stringify(match),

@@ -76,7 +76,7 @@ async function downloadDay (dateStr) {
       })
       var mapDate = new Date(matchMapStats.date).toUTCString()
     } catch (err) {
-      console.log(`${matchStats.id}|${matchMapStats.matchPageID}|${mapDate} HLTV.getMatchMapStats error`)
+      console.log(`${matchStats.id}|| HLTV.getMatchMapStats error`)
       console.dir(err)
     }
 
@@ -180,7 +180,11 @@ async function downloadDay (dateStr) {
           console.log(err)
           problemImports.push({ match: match, matchMapStats: importMatchMapStats })
         })
+        // Remove .dem file (it's sitting in the .rar archive anyway), can optionally kill
+        exec(`rm ${fulfilled.outDir + demo}`) 
       })
+      // Optionally remove .rar archive?
+        exec(`rm -rf ${fulfilled.outDir + 'archive.rar'}`) 
     })
       .catch((err) => {
         console.log(`${matchStats.id}|${matchMapStats.matchPageID}|${mapDate}`)
@@ -214,8 +218,29 @@ async function downloadMatch (match, matchMapStats, matchMapStatsID, matchStats)
         // .rar archives and .dem files to not have to re-download (HLTV load)
         // or re-extract (user performance). Rejecting for now
         concurDL -= 1
-        console.log(`${matchStats.id}|${match.id} already downloaded or downloading (${outPath}), skipping. . .`)
-        reject(e)
+        console.log(`${matchStats.id}|${match.id} already downloaded. Attempting to locate extracted demos.`)
+        fs.readdir(outDir, async (err, files) => {
+          if (err) {
+            console.log(`${matchStats.id}|${match.id} Error reading directory ${outDir}`)
+            console.log(err)
+          }
+
+          var dems = files.filter(f => f.substr(f.length - 3) === 'dem')
+          if (dems.length > 0) {
+            console.log(`${matchStats.id}|${match.id} Extracted demos found.`)
+            resolve({
+              outDir: outDir,
+              demos: dems
+            })
+          } else { // If archive is found but no demo files found
+            dems = await extractArchive(outPath, outDir, match.id)
+            console.log(`${matchStats.id}|${match.id} Re-extracting demos`)
+            resolve({
+              outDir: outDir,
+              demos: dems
+            })
+          }
+          })
       })
       .on('ready', () => {
         console.log(`${matchMapStatsID}|${match.id} starting download. . .`)
@@ -247,11 +272,11 @@ async function downloadDays (startDateStr, endDateStr) {
   var endDate = moment(endDateStr)
   var dlDate = startDate
   while (dlDate.toString() !== endDate.toString()) {
-    await downloadDay(dlDate.format('YYYY-MM-DD h:mm:ss ZZ'))
+    await downloadDay(dlDate.format('YYYY-MM-DD'))
     dlDate.add(1, 'd')
   }
-  var thing = await downloadDay(endDate.format('YYYY-MM-DD h:mm:ss ZZ'))
-  console.log(`Downloaded from ${startDateStr} to ${endDateStr}`)
+  var thing = await downloadDay(endDate.format('YYYY-MM-DD'))
+  console.log(`Downloaded from ${startDateStr} to ${endDateStr} | ${thing}`)
 }
 
 // var test_getMatchesStats = JSON.parse(fs.readFileSync('./test_getMatchesStats.txt', 'utf8'))
