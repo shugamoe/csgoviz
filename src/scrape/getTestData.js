@@ -4,6 +4,7 @@ const { HLTV } = require('hltv')
 const apiConfig = require('hltv').default.config
 const matchType = require('hltv').MatchType
 const FetchStream = require('fetch').FetchStream
+var db = require('./models.js')
 
 // Don't get banned from HLTV, be respectful, use rate-limiter-flexible later
 function sleep (milliSeconds) {

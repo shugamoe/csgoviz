@@ -2,8 +2,8 @@
  * @module models
  */
 
-var Sequelize = require('sequelize');
-var db = require('./db');
+var Sequelize = require('sequelize')
+var db = require('./db')
 
 /**
  * event table definition
@@ -17,11 +17,11 @@ var db = require('./db');
  * @property {string[]} entities
  */
 var Event = db.define('event', {
-  tick: {type: Sequelize.INTEGER, allowNull: false},
-  name: {type: Sequelize.STRING, allowNull: false},
-  data: {type: Sequelize.JSONB, allowNull: false},
-  locations: {type: Sequelize.JSONB},
-  entities: {type: Sequelize.JSONB}
+  tick: { type: Sequelize.INTEGER, allowNull: false },
+  name: { type: Sequelize.STRING, allowNull: false },
+  data: { type: Sequelize.JSONB, allowNull: false },
+  locations: { type: Sequelize.JSONB },
+  entities: { type: Sequelize.JSONB }
 }, {
   indexes: [
     {
@@ -43,7 +43,7 @@ var Event = db.define('event', {
       operator: 'jsonb_ops'
     }
   ]
-});
+})
 
 /**
  * entity_prop table definition
@@ -56,10 +56,10 @@ var Event = db.define('event', {
  * @property {{value: *}} value
  */
 var EntityProp = db.define('entity_prop', {
-  index: {type: Sequelize.INTEGER, allowNull: false},
-  tick: {type: Sequelize.INTEGER, allowNull: false},
-  prop: {type: Sequelize.STRING, allowNull: false},
-  value: {type: Sequelize.JSONB, allowNull: false}
+  index: { type: Sequelize.INTEGER, allowNull: false },
+  tick: { type: Sequelize.INTEGER, allowNull: false },
+  prop: { type: Sequelize.STRING, allowNull: false },
+  value: { type: Sequelize.JSONB, allowNull: false }
 }, {
   indexes: [
     {
@@ -78,7 +78,7 @@ var EntityProp = db.define('entity_prop', {
       operator: 'jsonb_path_ops'
     }
   ]
-});
+})
 
 /**
  * map model
@@ -91,15 +91,16 @@ var EntityProp = db.define('entity_prop', {
  * @property {number} tickrate
  */
 var Map = db.define('map', {
-  title: {type: Sequelize.STRING, allowNull: false},
-  level: {type: Sequelize.STRING, allowNull: false},
-  game: {type: Sequelize.STRING, allowNull: false},
-  data: {type: Sequelize.JSONB},
-  tickrate: {type: Sequelize.INTEGER, allowNull: false},
-  date: {type: Sequelize.DATE, allowNull: false},
-  mms_data: {type: Sequelize.JSONB, allowNull: true},
-  mms_id: {type: Sequelize.INTEGER, allowNull: false, primaryKey: true}, // MatchMapStat ID
-  match_id: {type: Sequelize.INTEGER, allowNull: false}
+  title: { type: Sequelize.STRING, allowNull: false },
+  level: { type: Sequelize.STRING, allowNull: false },
+  game: { type: Sequelize.STRING, allowNull: false },
+  data: { type: Sequelize.JSONB },
+  tickrate: { type: Sequelize.INTEGER, allowNull: false },
+  date: { type: Sequelize.DATE, allowNull: false },
+  mms_data: { type: Sequelize.JSONB, allowNull: true },
+  mms_id: { type: Sequelize.INTEGER, allowNull: false, primaryKey: true } // MatchMapStat ID
+  ,
+  match_id: { type: Sequelize.INTEGER, allowNull: false }
 }, {
   indexes: [
     {
@@ -107,15 +108,16 @@ var Map = db.define('map', {
       using: 'gin',
       operator: 'jsonb_ops'
     }
-  ]}
-);
+  ]
+}
+)
 
 var Match = db.define('match', {
-  match_id: {type: Sequelize.INTEGER, allowNull: false, primaryKey: true},
-  date: {type: Sequelize.DATE, allowNull: false},
-  data: {type: Sequelize.JSONB},
-  maps_played: {type: Sequelize.INTEGER, allowNull: false},
-  maps: {type: Sequelize.INTEGER, allowNull: false}
+  match_id: { type: Sequelize.INTEGER, allowNull: false, primaryKey: true },
+  date: { type: Sequelize.DATE, allowNull: false },
+  data: { type: Sequelize.JSONB },
+  maps_played: { type: Sequelize.INTEGER, allowNull: false },
+  maps: { type: Sequelize.INTEGER, allowNull: false } // TODO(jcm): rename this to maps_max
 }, {
   indexes: [
     {
@@ -123,15 +125,17 @@ var Match = db.define('match', {
       using: 'gin',
       operator: 'jsonb_ops'
     }
-  ]}
-);
+  ]
+}
+)
 
-Map.hasMany(Event, {allowNull: false, onDelete: 'cascade'});
-Map.hasMany(EntityProp, {allowNull: false, onDelete: 'cascade'});
+Map.hasMany(Event, { allowNull: false, onDelete: 'cascade' })
+Map.hasMany(EntityProp, { allowNull: false, onDelete: 'cascade' })
+// Match.hasMany(Map, { allowNull: true, foreignKey: 'match_id' })
 
 module.exports = {
   Map,
   Event,
   EntityProp,
   Match
-};
+}

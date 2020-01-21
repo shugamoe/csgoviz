@@ -325,7 +325,8 @@ function importDemoBuffer (client, buffer, matchMapStatsID, callback) {
  */
 function importDemoFile (path, matchMapStats, matchMapStatsID, match) {
   // console.log('Connecting to database...');
-  console.log(`${matchMapStatsID}|${matchMapStats.matchPageID}|moment(match.date).toString('YYYY-MM-DD') starting import to Map table.`)
+  var matchDate = moment(match.date).toString('YYYY-MM-DD')
+  console.log(`${matchMapStatsID}|${matchMapStats.matchPageID}|${matchDate} starting import to Map table.`)
   var client = new pg.Client(dbCon.connectionString)
 
   var query = Promise.promisify(client.query, { context: client })

@@ -58,12 +58,12 @@ async function downloadDay (dateStr) {
           // console.log(`mms_id:${matchStats.id} not in Map table`)
           // TODO(jcm): maybe gather up some of these commented out comments to be a debug=true print only?
         } else {
-          console.log(`mms_id:${matchStats.id} has ${res.length} entries in Maps already, skipping. . . `)
+          console.log(`${matchStats.id}| has ${res.length} entries in Maps already, skipping. . . `)
           // Indicate that we don't want to re-import this, might be necessary
           // if 1 or more maps from match is in DB, but another is missing,
           // don't need to re-import something we already have TODO(jcm):
           // perhaps compare hashes of the file?
-          orphanMapStats.push({ json: null, MapStatsID: matchStats.id, matchPageID: matchMapStats.matchPageID })
+          orphanMapStats.push({ json: null, MapStatsID: matchStats.id, matchPageID: null, map: matchStats.map, skip: true})
           return null
         }
       })
@@ -109,7 +109,7 @@ async function downloadDay (dateStr) {
         await importMatch(match).then(curImport = '')
       } else {
         if (res[0].dataValues.match_id === match.id) {
-          orphanMapStats.push({ json: matchMapStats, MapStatsID: matchStats.id, matchPageID: matchMapStats.matchPageID })
+          orphanMapStats.push({ json: matchMapStats, MapStatsID: matchStats.id, matchPageID: matchMapStats.matchPageID, map: matchMapStats.map})
           // With this only one map(Match)Stats id (mms_id) will trigger an attempt to download the demos
           // console.log(`${matchStats.id}|${match.id} sent to orphanMapStats. Already in Match table, skipping download. . .`)
           return null
@@ -126,7 +126,7 @@ async function downloadDay (dateStr) {
     }
     while (concurDL >= 2)
 
-    downloadMatch(match, matchMapStats, matchStats.id).then(async fulfilled => {
+    downloadMatch(match, matchMapStats, matchStats.id, matchStats).then(async fulfilled => {
       fulfilled.demos.forEach(async (demo) => {
         // Is the current matchMapStats appropriate for the demo?
         var haveMapStats = demo.match(MapDict[matchMapStats.map])
@@ -137,17 +137,22 @@ async function downloadDay (dateStr) {
           importMatchMapStatsID = matchStats.id
         } else { // If not, check orphans
           var matchingOrphans = orphanMapStats.filter(ms => {
-            var sameMap = demo.match(MapDict[ms.json.map])
-            return ((ms.matchPageID === match.id) && sameMap)
+            var mmsIdInMatch = match.maps.filter(map => map.statsId === ms.MapStatsID).length === 1
+            var sameMatch = ms.matchPageID === match.id
+            var sameMap = demo.match(MapDict[ms.map])
+            return (sameMap && (mmsIdInMatch || sameMatch))
           })
           if (matchingOrphans.length >= 1) {
-            if (matchingOrphans[0].json === null) { // only happens if mms_id already in Map table
+            if (matchingOrphans[0].skip === true) { // only happens if mms_id already in Map table
               console.log(`Orphan for ${matchStats.id}|${match.id} found, but mms_id is already in Map table, skipping import. . .`)
               return null // Skip importing this demo
             }
             console.log(`${matchStats.id}|${match.id} ${matchingOrphans.length} Orphan(s) found`)
             importMatchMapStats = matchingOrphans[0].json
             importMatchMapStatsID = matchingOrphans[0].MapStatsID
+
+            // Clear mms_id from Orphans
+            orphanMapStats = orphanMapStats.filter(ms => ms.MapStatsID !== importMatchMapStatsID)
           } else {
             // Go download the matchMapStats real quick (could be possible
             // if games in match were played before/after midnight
@@ -162,7 +167,8 @@ async function downloadDay (dateStr) {
               })
               importMatchMapStatsID = missingMapStats.statsId
             }
-            console.log(`${importMatchMapStatsID}|${match.id}|${moment(match.date).toString('YYYY-MM-DD')} Fetched matchMapStats. (No orphans found.)`)
+            var matchDate = moment(match.date).toString('YYYY-MM-DD')
+            console.log(`${importMatchMapStatsID}|${match.id}|${matchDate} Fetched matchMapStats. (No orphans found.)`)
           }
         }
 
@@ -182,8 +188,6 @@ async function downloadDay (dateStr) {
           problemImports.push({ match: match, matchMapStats: importMatchMapStats })
         })
       })
-      // After importing all demos for the match, remove the orphan(s) used.
-      orphanMapStats = orphanMapStats.filter(ms => ms.json.matchPageID !== match.id)
     })
       .catch((err) => {
         console.log(`${matchStats.id}|${matchMapStats.matchPageID}|${mapDate}`)
@@ -197,7 +201,7 @@ setTimeout(function () {
 
 const snooze = ms => new Promise(resolve => setTimeout(resolve, ms))
 
-async function downloadMatch (match, matchMapStats, matchMapStatsID) {
+async function downloadMatch (match, matchMapStats, matchMapStatsID, matchStats) {
   var demoLink = match.demos.filter(demo => demo.name === 'GOTV Demo')[0].link
   demoLink = apiConfig.hltvUrl + demoLink
 
@@ -217,7 +221,7 @@ async function downloadMatch (match, matchMapStats, matchMapStatsID) {
         // .rar archives and .dem files to not have to re-download (HLTV load)
         // or re-extract (user performance). Rejecting for now
         concurDL -= 1
-        console.log(`${matchMapStats.id}|${match.id} already downloaded or downloading (${outPath}), skipping. . .`)
+        console.log(`${matchStats.id}|${match.id} already downloaded or downloading (${outPath}), skipping. . .`)
         reject(e)
       })
       .on('ready', () => {
