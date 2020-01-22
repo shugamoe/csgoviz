@@ -1,12 +1,27 @@
 const { unrar, list } = require('unrar-promise')
+const { HLTV } = require('hltv')
+const matchType = require('hltv').MatchType
 var Promise = require('bluebird')
-const tarchPath = '/home/jcm/matches/2337272/archive.rar'
+const moment = require('moment')
+
+const queryRLM = new RateLimiterMemory({
+  points: 1,
+  duration: 3 // query limit 1 per 3 seconds (robots.txt has 1 sec)
+})
+const queryLimiter = new RateLimiterQueue(queryRLM, {
+  maxQueueSize: 1000
+})
+
+setTimeout(function () {
+}, 5000)
+
+const snooze = ms => new Promise(resolve => setTimeout(resolve, ms))
 
 function extractArchive (archPath, targetDir, matchID) {
   return new Promise(async (resolve, reject) => {
     console.log(`|${matchID} Extracting . . .`)
     try {
-      await unrar(archPath, targetDir, {overwrite: true})
+      await unrar(archPath, targetDir, { overwrite: true })
       resolve(list(archPath))
     } catch (err) {
       console.dir(err)
@@ -15,5 +30,100 @@ function extractArchive (archPath, targetDir, matchID) {
   })
 }
 
+async function getMatchesStats (startDate, endDate, numRetries) {
+  if (numRetries === undefined) {
+    numRetries = 6
+  }
+
+  try {
+    await queryLimiter.removeTokens(1)
+    var matchesStats = await HLTV.getMatchesStats({
+      startDate: startDate,
+      endDate: endDate,
+      matchType: matchType.LAN
+    })
+    console.log(`Starting ${startDate}-${endDate}`)
+  } catch (err) {
+    console.log(err)
+    if (numRetries === 0){
+      console.log(`HLTV.getMatchesStats error (no more retries). ${startDate}-${endDate}`)
+      return null
+    } else {
+      console.log(`HLTV.getMatchesStats (${numRetries} more retries). ${startDate}${endDate}`)
+      snooze(1200000) // 20 minutes
+      return getMatchesStats(startDate, endDate, numRetries - 1)
+    }
+  }
+  return matchesStats
+}
+
+async function getMatchMapStats(matchStats, numRetries){
+  if (numRetries === undefined) {
+    numRetries = 6
+  }
+  if (typeof(matchStats) == 'number') {
+    var matchStats = {
+      id: matchStats,
+    }
+    var mapDate = '[Date N/A]'
+  } else {
+    var mapDate = moment(matchStats.date).format('YYYY-MM-DD h:mm:ss ZZ')
+  }
+
+
+  try {
+    await queryLimiter.removeTokens(1)
+    var matchMapStats = await HLTV.getMatchMapStats({
+      id: matchStats.id
+    })
+  } catch (err) {
+    console.log(err)
+    if (numRetries === 0){
+      console.log(`HLTV.getMatchMapStats error. (no more retries) ${matchStats.id}||${mapDate}`)
+      return null
+    } else {
+      console.log(`HLTV.getMatchMapStats error. (${numRetries} more retries) ${matchStats.id}||${mapDate}`)
+      snooze(1200000) // 20 minutes
+      return getMatchMapStats(matchStats, numRetries - 1)
+    }
+  }
+  return getMatchMapStats
+}
+
+async function getMatch(matchStats, matchId, numRetries){
+  if (numRetries === undefined) {
+    numRetries = 6
+  }
+
+  try {
+    await queryLimiter.removeTokens(1)
+    var match = await HLTV.getMatch({
+      id: matchId
+    })
+  } catch (err) {
+    var mapDate = moment(matchStats.date).format('YYYY-MM-DD h:mm:ss ZZ')
+    console.log(err)
+    if (numRetries === 0){
+      console.log(`HLTV.getMatch error (no more retries) ${matchStats.id}|${matchId}|${mapDate}`)
+      return null
+    } else {
+      console.log(`HLTV.getMatch error (${numRetries} more retries) ${matchStats.id}|${matchId}|${mapDate}`)
+      snooze(1200000) // 20 minutes
+      return getMatchMapStats(mmsId, numRetries - 1)
+    }
+  }
+  return match
+}
+
+
 module.exports.extractArchive = extractArchive
+module.exports = {
+  extractArchive,
+  getMatchesStats,
+  getMatchMapStats,
+  getMatch,
+  queryLimiter,
+  queryRLM,
+  snooze
+}
 // extractArchive(tarchPath)
