@@ -410,16 +410,6 @@ function importDemoFile (path, matchMapStats, matchMapStatsID, match) {
     })
 }
 
-async function importDemoWithMeta (path, matchMapStats, matchMapStatsID, match) {
-  return new Promise((resolve, reject) => {
-    db.sync(syncOpts)
-      .then(() => {
-        importDemoFile(path, matchMapStats, matchMapStatsID, match).then(res => resolve(res))
-          .catch(e => reject(e))
-      })
-  })
-}
-
 function importMatch (match) {
   var client = new pg.Client(dbCon.connectionString)
   var query = Promise.promisify(client.query, { context: client })
@@ -470,6 +460,16 @@ function importMatchWrap (match) {
     db.sync(syncOpts)
       .then(() => {
         importMatch(match).then(res => resolve(res))
+          .catch(e => reject(e))
+      })
+  })
+}
+
+async function importDemoWithMeta (path, matchMapStats, matchMapStatsID, match) {
+  return new Promise((resolve, reject) => {
+    db.sync(syncOpts)
+      .then(() => {
+        importDemoFile(path, matchMapStats, matchMapStatsID, match).then(res => resolve(res))
           .catch(e => reject(e))
       })
   })

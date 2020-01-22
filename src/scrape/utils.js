@@ -3,6 +3,7 @@ const { HLTV } = require('hltv')
 const matchType = require('hltv').MatchType
 var Promise = require('bluebird')
 const moment = require('moment')
+const { RateLimiterMemory, RateLimiterQueue } = require('rate-limiter-flexible')
 
 const queryRLM = new RateLimiterMemory({
   points: 1,
@@ -45,7 +46,7 @@ async function getMatchesStats (startDate, endDate, numRetries) {
     console.log(`Starting ${startDate}-${endDate}`)
   } catch (err) {
     console.log(err)
-    if (numRetries === 0){
+    if (numRetries === 0) {
       console.log(`HLTV.getMatchesStats error (no more retries). ${startDate}-${endDate}`)
       return null
     } else {
@@ -57,19 +58,18 @@ async function getMatchesStats (startDate, endDate, numRetries) {
   return matchesStats
 }
 
-async function getMatchMapStats(matchStats, numRetries){
+async function getMatchMapStats (matchStats, numRetries) {
   if (numRetries === undefined) {
     numRetries = 6
   }
-  if (typeof(matchStats) == 'number') {
+  if (typeof (matchStats) === 'number') {
     var matchStats = {
-      id: matchStats,
+      id: matchStats
     }
     var mapDate = '[Date N/A]'
   } else {
     var mapDate = moment(matchStats.date).format('YYYY-MM-DD h:mm:ss ZZ')
   }
-
 
   try {
     await queryLimiter.removeTokens(1)
@@ -78,7 +78,7 @@ async function getMatchMapStats(matchStats, numRetries){
     })
   } catch (err) {
     console.log(err)
-    if (numRetries === 0){
+    if (numRetries === 0) {
       console.log(`HLTV.getMatchMapStats error. (no more retries) ${matchStats.id}||${mapDate}`)
       return null
     } else {
@@ -90,7 +90,7 @@ async function getMatchMapStats(matchStats, numRetries){
   return getMatchMapStats
 }
 
-async function getMatch(matchStats, matchId, numRetries){
+async function getMatch (matchStats, matchId, numRetries) {
   if (numRetries === undefined) {
     numRetries = 6
   }
@@ -103,7 +103,7 @@ async function getMatch(matchStats, matchId, numRetries){
   } catch (err) {
     var mapDate = moment(matchStats.date).format('YYYY-MM-DD h:mm:ss ZZ')
     console.log(err)
-    if (numRetries === 0){
+    if (numRetries === 0) {
       console.log(`HLTV.getMatch error (no more retries) ${matchStats.id}|${matchId}|${mapDate}`)
       return null
     } else {
@@ -114,7 +114,6 @@ async function getMatch(matchStats, matchId, numRetries){
   }
   return match
 }
-
 
 module.exports.extractArchive = extractArchive
 module.exports = {

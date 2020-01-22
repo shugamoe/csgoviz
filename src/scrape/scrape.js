@@ -10,7 +10,7 @@ const { importDemo, importMatch } = require('./import.js')
 var Models = require('./models.js')
 const { exec } = require('child_process')
 var moment = require('moment')
-const {queryLimiter, getMatchesStats, getMatchMapStats, getMatch snooze} = require('./utils.js')
+const { queryLimiter, getMatchesStats, getMatchMapStats, getMatch, snooze } = require('./utils.js')
 
 require('console-stamp')(console, 'mmm/dd/yyyy | HH:MM:ss.l')
 
@@ -39,7 +39,7 @@ async function downloadDay (dateStr) {
     } else {
       console.log(`${matchStats.id}| has ${dbHasMap.length} entries in Maps already, skipping. . . `)
       orphanMapStats.push({ json: null, MapStatsID: matchStats.id, matchPageID: null, map: matchStats.map, skip: true })
-      return // next forEach 
+      return // next forEach
     }
 
     var matchMapStats = await getMatchMapStats(matchStats.id)
@@ -110,7 +110,7 @@ async function downloadDay (dateStr) {
           if (missingMapStats.length === 1) {
             missingMapStats = missingMapStats[0]
             importMatchMapStats = await getMatchMapStats(matchStats)
-              id: missingMapStats.statsId
+            id: missingMapStats.statsId
             importMatchMapStatsID = missingMapStats.statsId
           } else {
           }
@@ -127,14 +127,18 @@ async function downloadDay (dateStr) {
       while (curImport)
 
       curImport = importMatchMapStatsID + '|' + match.id
-      await importDemo(fulfilled.outDir + demo, importMatchMapStats, importMatchMapStatsID, match).then(() => {
-        curImport = ''
-      }).catch((err) => {
-        console.log(`${importMatchMapStatsID}|${match.id} Error importing demo`)
-        console.log(err)
-        // TODO(jcm): make table for this, chance to try out sequelize only creation
-        problemImports.push({ match: match, matchMapStats: importMatchMapStats })
-      })
+      await importDemo(fulfilled.outDir + demo, importMatchMapStats, importMatchMapStatsID,
+        match
+      )
+        .then(() => {
+          curImport = ''
+        })
+        .catch((err) => {
+          console.log(`${importMatchMapStatsID}|${match.id} Error importing demo`)
+          console.log(err)
+          // TODO(jcm): make table for this, chance to try out sequelize only row inserts?
+          problemImports.push({ match: match, matchMapStats: importMatchMapStats })
+        })
       // Remove .dem file (it's sitting in the .rar archive anyway), can optionally kill
       exec(`rm ${fulfilled.outDir + demo}`)
     })
@@ -146,11 +150,6 @@ async function downloadDay (dateStr) {
       })
   })
 }
-
-setTimeout(function () {
-}, 5000)
-
-const snooze = ms => new Promise(resolve => setTimeout(resolve, ms))
 
 async function downloadMatch (match, matchMapStats, matchMapStatsID, matchStats) {
   var demoLink = match.demos.filter(demo => demo.name === 'GOTV Demo')[0].link
