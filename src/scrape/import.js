@@ -394,7 +394,7 @@ function importDemoFile (path, matchMapStats, matchMapStatsID, match) {
       console.error(e.stack)
 
       // console.log(`${matchMapStatsID}|${match.id} committing transaction...`);
-      console.log('ERROR!! Rolling back... ${matchMapStatsID}|${match.id}|${matchDate}')
+      console.log(`ERROR!! Rolling back... ${matchMapStatsID}|${match.id}|${matchDate}`)
       commitFail = true
       return query('ROLLBACK')
     })
@@ -444,7 +444,7 @@ function importMatch (match) {
     .catch(e => {
       console.error(e.stack)
 
-      console.log('ERROR!! Rolling back...')
+      console.log(`ERROR!! Rolling back Match... |${match.id}`)
       return query('ROLLBACK')
     })
 

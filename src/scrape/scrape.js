@@ -52,9 +52,6 @@ async function downloadDay (dateStr) {
     // Import the match data into SQL database, in case something goes wrong with the download or the import.
 
     var dbHasMatch = await checkDbForMatch(matchStats, match)
-    if (matchStats.id === 94246) {
-      console.log(`Problem mms_id: 94246 ${dbHasMap}`)
-    }
     if (dbHasMatch.length === 0) { // If we don't have that match_id in the Match table
       do {
         // Snoozes function without pausing event loop
@@ -70,10 +67,14 @@ async function downloadDay (dateStr) {
         // console.log(dbHasMap)
         // console.log(`1 match, one map ${matchStats.id}|${match.id}`)
       // }
+      console.log(`Match already in table, skipping. . . ${matchStats.id}|${match.id}`)
       orphanMapStats.push({ json: matchMapStats, MapStatsID: matchStats.id, matchPageID: matchMapStats.matchPageID, map: matchMapStats.map })
       // With this only one map(Match)Stats id (mms_id) will trigger an attempt to download the demos
       // console.log(`${matchStats.id}|${match.id} sent to orphanMapStats. Already in Match table, skipping download. . .`)
       return null
+    }
+    if (matchStats.id === 94246) {
+      console.log(`Problem mms_id: 94246 ${dbHasMap}`)
     }
 
     do {
@@ -171,14 +172,6 @@ async function downloadDay (dateStr) {
   }))
     .then(res => {
       console.log(`${numMapImports + mapsInDb}/${matchesStats.length} maps imported for ${dateStr}. (${mapsInDb} maps already in DB.)`)
-      console.log(res)
-      return new Promise((resolve, reject) => {
-        return {
-          imports: numMapImports,
-          total: matchesStats.length,
-          mapsInDb: mapsInDb,
-        }
-      })
     })
   // return {
     // imports: numMapImports,
