@@ -1,9 +1,9 @@
-'use strict';
+'use strict'
 
-var Sequelize = require('sequelize');
-const config = require('./dbCon.json');
+var Sequelize = require('sequelize')
+const config = require('./dbCon.json')
 
-let options = {
+const options = {
   logging: false,
   maxConcurrentQueries: 100,
   native: false,
@@ -11,13 +11,13 @@ let options = {
     timestamps: false,
     underscored: true
   },
-  pool: {maxConnections: 10, maxIdleTime: 30}
-};
+  pool: { maxConnections: 10, maxIdleTime: 30 }
+}
 
 try {
-  options.native = !!require('pg-native');
+  options.native = !!require('pg-native')
 } catch (err) {
   // if pg-native can't be found, use the non-native version
 }
 
-module.exports = new Sequelize(config.connectionString, options);
+module.exports = new Sequelize(config.connectionString, options)

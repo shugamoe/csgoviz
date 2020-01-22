@@ -5,10 +5,9 @@ const FetchStream = require('fetch').FetchStream
 const MapDict = require('./maps.json')
 const { extractArchive } = require('./utils.js')
 const { importDemo, importMatch } = require('./import.js')
-var Models = require('./models.js')
 const { exec } = require('child_process')
 var moment = require('moment')
-const { getMatchesStats, getMatchMapStats, getMatch, snooze, asyncForEach } = require('./utils.js')
+const { getMatchesStats, getMatchMapStats, getMatch, snooze, asyncForEach, checkDbForMap, checkDbForMatch} = require('./utils.js')
 
 require('console-stamp')(console, 'mmm/dd/yyyy | HH:MM:ss.l')
 
@@ -30,43 +29,47 @@ async function downloadDay (dateStr) {
   // await matchesStats.forEach(async (matchStats, msi, arr) => {
   // await asyncForEach(matchesStats, async (matchStats, msi, arr) => {
   await Promise.all(matchesStats.map(async (matchStats, msi, arr) => {
-    var dbHasMap = await Models.Map.findAll({
-      attributes: ['mms_id'],
-      where: { mms_id: matchStats.id }
-    })
-    if (matchStats.id === 94393) {
-      console.log(`Problem mms_id: 94393 ${dbHasMap}`)
-    }
+    var dbHasMap = await checkDbForMap(matchStats)
     if (dbHasMap.length === 0) { // If we don't have that mms_id in the Maps
-      // console.log(`mms_id:${matchStats.id} not in Map table`)
+      console.log(`Not in Map table. ${matchStats.id}`)
       // TODO(jcm): maybe gather up some of these commented out comments to be a debug=true print only?
-    } else {
+    } else if (dbHasMap.length === 1){
       console.log(`${dbHasMap.length} entries already in Map table. skipping ${matchStats.id}|`)
       orphanMapStats.push({ json: null, MapStatsID: matchStats.id, matchPageID: null, map: matchStats.map, skip: true })
       mapsInDb = mapsInDb + 1
-      return // next forEach
+      return null // next forEach
+    } else {
+      console.log(`Inspect ${matchStats.id}|`)
+      console.log(matchStats)
     }
 
     var matchMapStats = await getMatchMapStats(matchStats)
     var mapDate = moment(matchMapStats.date).format('YYYY-MM-DD h:mm:ss ZZ')
     var match = await getMatch(matchStats, matchMapStats.matchPageID)
 
+
     // Download demo archive
     // Import the match data into SQL database, in case something goes wrong with the download or the import.
-    do {
-      // Snoozes function without pausing event loop
-      await snooze(1000)
-    }
-    while (curImport)
 
-    var dbHasMatch = await Models.Match.findAll({
-      attributes: ['match_id'],
-      where: { match_id: match.id }
-    })
+    var dbHasMatch = await checkDbForMatch(matchStats, match)
+    if (matchStats.id === 94246) {
+      console.log(`Problem mms_id: 94246 ${dbHasMap}`)
+    }
     if (dbHasMatch.length === 0) { // If we don't have that match_id in the Match table
+      do {
+        // Snoozes function without pausing event loop
+        await snooze(1000)
+        // console.log(`Import for ${matchArr[i].id}-${matchContent.demos[d]} waiting. . . curImport = ${curImport}`)
+      }
+      while (curImport)
+
       curImport = match.id
       await importMatch(match).then(curImport = '')
     } else {
+      // if ((matchStats.id === 94246)){
+        // console.log(dbHasMap)
+        // console.log(`1 match, one map ${matchStats.id}|${match.id}`)
+      // }
       orphanMapStats.push({ json: matchMapStats, MapStatsID: matchStats.id, matchPageID: matchMapStats.matchPageID, map: matchMapStats.map })
       // With this only one map(Match)Stats id (mms_id) will trigger an attempt to download the demos
       // console.log(`${matchStats.id}|${match.id} sent to orphanMapStats. Already in Match table, skipping download. . .`)
@@ -164,12 +167,25 @@ async function downloadDay (dateStr) {
         console.log(`Error in downloadMatch. ${matchStats.id}|${matchMapStats.matchPageID}|${mapDate}`)
         console.log(err)
       })
+    return null
   }))
-  return {
-    imports: numMapImports,
-    total: matchesStats.length,
-    mapsInDb: mapsInDb
-  }
+    .then(res => {
+      console.log(`${numMapImports + mapsInDb}/${matchesStats.length} maps imported for ${dateStr}. (${mapsInDb} maps already in DB.)`)
+      console.log(res)
+      return new Promise((resolve, reject) => {
+        return {
+          imports: numMapImports,
+          total: matchesStats.length,
+          mapsInDb: mapsInDb,
+        }
+      })
+    })
+  // return {
+    // imports: numMapImports,
+    // total: matchesStats.length,
+    // mapsInDb: mapsInDb,
+    // mapArr: mapArr
+  // }
 }
 
 async function downloadMatch (match, matchMapStats, matchMapStatsID, matchStats) {
@@ -255,8 +271,7 @@ async function downloadDays (startDateStr, endDateStr) {
   // addDays.forEach(async (days) => {
   await asyncForEach(addDays, async (days) => {
     var dlDate = moment(startDateStr).add(days, 'd').format('YYYY-MM-DD')
-    var dlData = await downloadDay(dlDate)
-    console.log(`${dlData.imports + dlData.mapsInDb}/${dlData.total} maps imported for ${dlDate}. (${dlData.mapsInDb} maps already in DB.)`)
+    await downloadDay(dlDate)
   })
 }
 
@@ -270,4 +285,5 @@ async function downloadDays (startDateStr, endDateStr) {
 // })
 //
 
-downloadDays('2019-10-31', '2019-11-21')
+// downloadDays('2019-10-31', '2019-11-21')
+downloadDays('2019-10-31', '2019-10-31')
