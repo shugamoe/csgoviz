@@ -98,8 +98,7 @@ var Map = db.define('map', {
   tickrate: { type: Sequelize.INTEGER, allowNull: false },
   date: { type: Sequelize.DATE, allowNull: false },
   mms_data: { type: Sequelize.JSONB, allowNull: true },
-  mms_id: { type: Sequelize.INTEGER, allowNull: false, primaryKey: true } // MatchMapStat ID
-  ,
+  mms_id: { type: Sequelize.INTEGER, allowNull: false, primaryKey: true }, // MatchMapStat ID
   match_id: { type: Sequelize.INTEGER, allowNull: false }
 }, {
   indexes: [

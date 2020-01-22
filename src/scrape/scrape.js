@@ -8,7 +8,7 @@ const { importDemo, importMatch } = require('./import.js')
 var Models = require('./models.js')
 const { exec } = require('child_process')
 var moment = require('moment')
-const {queryLimiter, getMatchesStats, getMatchMapStats, getMatch, snooze} = require('./utils.js')
+const { getMatchesStats, getMatchMapStats, getMatch, snooze, asyncForEach } = require('./utils.js')
 
 require('console-stamp')(console, 'mmm/dd/yyyy | HH:MM:ss.l')
 
@@ -21,28 +21,35 @@ async function downloadDay (dateStr) {
   // TODO(jcm): Have restart functionality in case the catch blocks are
   // encountered (happens after a while? Use basic recursive fn or something)
   var matchesStats = await getMatchesStats(dateStr, dateStr)
-  console.log(`Starting ${dateStr}`)
   console.log(`${matchesStats.length} results for ${dateStr}`)
+  var numMapImports = 0
+  var mapsInDb = 0
 
   // Do not download/import new maps if mms_id in Map table (save HLTV load by
   // catching before further HLTV requests are made)
-  matchesStats.forEach(async (matchStats, msi, arr) => {
+  // await matchesStats.forEach(async (matchStats, msi, arr) => {
+  // await asyncForEach(matchesStats, async (matchStats, msi, arr) => {
+  await Promise.all(matchesStats.map(async (matchStats, msi, arr) => {
     var dbHasMap = await Models.Map.findAll({
       attributes: ['mms_id'],
       where: { mms_id: matchStats.id }
     })
+    if (matchStats.id === 94393) {
+      console.log(`Problem mms_id: 94393 ${dbHasMap}`)
+    }
     if (dbHasMap.length === 0) { // If we don't have that mms_id in the Maps
       // console.log(`mms_id:${matchStats.id} not in Map table`)
       // TODO(jcm): maybe gather up some of these commented out comments to be a debug=true print only?
     } else {
-      console.log(`${matchStats.id}| has ${dbHasMap.length} entries in Maps already, skipping. . . `)
+      console.log(`${dbHasMap.length} entries already in Map table. skipping ${matchStats.id}|`)
       orphanMapStats.push({ json: null, MapStatsID: matchStats.id, matchPageID: null, map: matchStats.map, skip: true })
-      return // next forEach 
+      mapsInDb = mapsInDb + 1
+      return // next forEach
     }
 
-    var matchMapStats = await getMatchMapStats(matchStats.id)
-    var mapDate = new moment(matchMapStats.date).format('YYYY-MM-DD h:mm:ss ZZ')
-    var match = await getMatch(matchStats, getMatchMapStats.id)
+    var matchMapStats = await getMatchMapStats(matchStats)
+    var mapDate = moment(matchMapStats.date).format('YYYY-MM-DD h:mm:ss ZZ')
+    var match = await getMatch(matchStats, matchMapStats.matchPageID)
 
     // Download demo archive
     // Import the match data into SQL database, in case something goes wrong with the download or the import.
@@ -73,8 +80,15 @@ async function downloadDay (dateStr) {
     }
     while (concurDL >= 2)
 
-    var matchContent = downloadMatch(match, matchMapStats, matchStats.id, matchStats)
-    matchContent.demos.forEach(async (demo) => {
+    try {
+      var matchContent = await downloadMatch(match, matchMapStats, matchStats.id, matchStats)
+      var matchDate = moment(match.date).format('YYYY-MM-DD h:mm:ss ZZ')
+    } catch (err) {
+      console.log(`Error downloading? ${matchStats.id}|${match.id}`)
+      console.log(err)
+    }
+    // matchContent.demos.forEach(async (demo) => {
+    await asyncForEach(matchContent.demos, async (demo) => {
       // Is the current matchMapStats appropriate for the demo?
       var haveMapStats = demo.match(MapDict[matchMapStats.map])
       var importMatchMapStats
@@ -96,7 +110,7 @@ async function downloadDay (dateStr) {
           }
           importMatchMapStats = matchingOrphans[0].json
           importMatchMapStatsID = matchingOrphans[0].MapStatsID
-          console.log(`${importMatchMapStatsID}|${match.id} ${matchingOrphans.length} Orphan(s) found`)
+          console.log(`${matchingOrphans.length} Orphan(s) found for ${importMatchMapStatsID}|${match.id}`)
 
           // Clear entry from Orphans
           orphanMapStats = orphanMapStats.filter(ms => ms.MapStatsID !== importMatchMapStatsID)
@@ -112,9 +126,11 @@ async function downloadDay (dateStr) {
 
             importMatchMapStats = await getMatchMapStats(matchStats)
           } else {
+            console.log(`Orphan fetching error. |${match.id}|${matchDate}`)
+            console.log(match.maps)
+            console.log(demo)
           }
-          var matchDate = moment(match.date).format('YYYY-MM-DD h:mm:ss ZZ')
-          console.log(`${importMatchMapStatsID}|${match.id}|${matchDate} Fetched matchMapStats. (No orphans found.)`)
+          console.log(`Fetched matchMapStats. (No orphans found.) ${importMatchMapStatsID}|${match.id}|${matchDate}`)
         }
       }
 
@@ -129,13 +145,15 @@ async function downloadDay (dateStr) {
       await importDemo(matchContent.outDir + demo, importMatchMapStats, importMatchMapStatsID,
         match
       )
-        .then(() => { curImport = ''
+        .then(() => {
+          curImport = ''
+          numMapImports = numMapImports + 1
         })
         .catch((err) => {
-            console.log(`${importMatchMapStatsID}|${match.id} Error importing demo`)
-            console.log(err)
-            // TODO(jcm): make table for this, chance to try out sequelize only row inserts?
-            problemImports.push({ match: match, matchMapStats: importMatchMapStats })
+          console.log(`Error importing demo ${importMatchMapStatsID}|${match.id}`)
+          console.log(err)
+          // TODO(jcm): make table for this, chance to try out sequelize only row inserts?
+          problemImports.push({ match: match, matchMapStats: importMatchMapStats })
         })
       // Remove .dem file (it's sitting in the .rar archive anyway), can optionally kill
       exec(`rm ${matchContent.outDir + demo}`)
@@ -143,10 +161,15 @@ async function downloadDay (dateStr) {
       // Optionally remove .rar archive?
       // exec(`rm -rf ${matchContent.outDir + 'archive.rar'}`)
       .catch((err) => {
-        console.log(`${matchStats.id}|${matchMapStats.matchPageID}|${mapDate} error in downloadMatch`)
+        console.log(`Error in downloadMatch. ${matchStats.id}|${matchMapStats.matchPageID}|${mapDate}`)
         console.log(err)
       })
-  })
+  }))
+  return {
+    imports: numMapImports,
+    total: matchesStats.length,
+    mapsInDb: mapsInDb
+  }
 }
 
 async function downloadMatch (match, matchMapStats, matchMapStatsID, matchStats) {
@@ -162,55 +185,63 @@ async function downloadMatch (match, matchMapStats, matchMapStatsID, matchStats)
   }
 
   return new Promise((resolve, reject) => {
-    concurDL += 1
-    var out = fs.createWriteStream(outPath, { flags: 'wx' })
-      .on('error', (e) => {
-        // TODO(jcm): Can check download status (or file stream activity?) of
-        // .rar archives and .dem files to not have to re-download (HLTV load)
-        // or re-extract (user performance). Rejecting for now
-        concurDL -= 1
-        console.log(`${matchStats.id}|${match.id} already downloaded. Attempting to locate extracted demos.`)
-        fs.readdir(outDir, async (err, files) => {
-          if (err) {
-            console.log(`${matchStats.id}|${match.id} Error reading directory ${outDir}`)
-            console.log(err)
-          }
+    if (fs.existsSync(outDir + 'dlDone.txt')) { // If the archive is already downloaded.
+      console.log(`A previous download is complete. Attempting to locate extracted demos. ${matchStats.id}|${match.id}`)
+      fs.readdir(outDir, async (err, files) => {
+        if (err) {
+          console.log(`${matchStats.id}|${match.id} Error reading directory ${outDir}`)
+          console.log(err)
+        }
 
-          var demos = files.filter(f => f.substr(f.length - 3) === 'dem')
-          if (demos.length > 0) {
-            console.log(`${matchStats.id}|${match.id} Extracted demos found.`)
-            resolve({
-              outDir: outDir,
-              demos: demos
-            })
-          } else { // If archive is found but no demo files found
-            demos = await extractArchive(outPath, outDir, match.id)
-            console.log(`${matchStats.id}|${match.id} Re-extracting demos`)
-            resolve({
-              outDir: outDir,
-              demos: demos
-            })
-          }
-        })
-      })
-      .on('ready', () => {
-        console.log(`${matchMapStatsID}|${match.id} starting download. . .`)
-
-        new FetchStream(demoLink)
-          .pipe(out)
-          .on('error', err => console.log(err, null)) // Could get 503 (others too possib.) log those for checking later?
-          .on('finish', async () => {
-            console.log(`${matchMapStatsID}|${match.id} archive downloaded`)
-            concurDL -= 1
-            var demos = await extractArchive(outPath, outDir, match.id)
-
-            resolve({
-              outDir: outDir,
-              demos: demos || undefined
-            }
-            )
+        var demos = files.filter(f => f.substr(f.length - 3) === 'dem')
+        if (demos.length > 0) {
+          console.log(`${matchStats.id}|${match.id} Extracted demos found.`)
+          resolve({
+            outDir: outDir,
+            demos: demos
           })
+        } else {
+          console.log(`Re-extracting demos ${matchStats.id}|${match.id}`)
+          demos = await extractArchive(outPath, outDir, match.id)
+          resolve({
+            outDir: outDir,
+            demos: demos
+          })
+        }
       })
+    } else { // If archive is not done downloading
+      concurDL += 1
+      var out = fs.createWriteStream(outPath, { flags: 'w' }) // Overwrites incomplete archives
+        .on('error', (e) => {
+        })
+        .on('ready', () => {
+          console.log(`Starting download. . . ${matchMapStatsID}|${match.id}`)
+
+          new FetchStream(demoLink)
+            .pipe(out)
+            .on('error', (err) => {
+              console.log(`File download error. Removing incomplete archive. ${matchMapStatsID}|${match.id}`)
+              console.log(err)
+              fs.unlink(outPath, (err) => {
+                console.log(`Error deleting incomplete archive download. ${matchMapStatsID}|${match.id}`)
+                console.log(err)
+              })
+            }) // Could get 503 (others too possib.) log those for checking later?
+            .on('finish', async () => {
+              var demos = await extractArchive(outPath, outDir, match.id)
+              // Make quick flag file to show that it's complete
+              fs.writeFile(outDir + 'dlDone.txt', `Downloaded ${moment().format('YYYY-MM-DD h:mm:ss ZZ')}`, function (err) {
+                if (err) throw err
+                console.log(`Archive downloaded ${matchMapStatsID}|${match.id}`)
+              })
+              concurDL -= 1
+              return {
+                outDir: outDir,
+                demos: demos || undefined
+              }
+            })
+        })
+    }
   })
 }
 
@@ -221,9 +252,11 @@ async function downloadDays (startDateStr, endDateStr) {
   var deltaDays = moment.duration(endDate.diff(startDate)).days()
   var addDays = Array.from(Array(deltaDays + 1).keys()) // so we can use forEach
 
-  addDays.forEach(async (days) => {
+  // addDays.forEach(async (days) => {
+  await asyncForEach(addDays, async (days) => {
     var dlDate = moment(startDateStr).add(days, 'd').format('YYYY-MM-DD')
-    await downloadDay(dlDate)
+    var dlData = await downloadDay(dlDate)
+    console.log(`${dlData.imports + dlData.mapsInDb}/${dlData.total} maps imported for ${dlDate}. (${dlData.mapsInDb} maps already in DB.)`)
   })
 }
 

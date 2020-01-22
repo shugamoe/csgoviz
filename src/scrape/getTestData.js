@@ -15,8 +15,8 @@ function sleep (milliSeconds) {
 function gettestData () {
   // Search matches by date, LAN events only
   HLTV.getMatchesStats({
-    startDate: '2019-11-03',
-    endDate: '2019-11-03',
+    startDate: '2019-10-31',
+    endDate: '2019-10-31',
     matchType: matchType.LAN
   })
 

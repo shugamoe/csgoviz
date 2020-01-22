@@ -19,14 +19,14 @@ setTimeout(function () {
 const snooze = ms => new Promise(resolve => setTimeout(resolve, ms))
 
 async function extractArchive (archPath, targetDir, matchID) {
-    console.log(`Extracting . . . |${matchID}`)
-    try {
-      await unrar(archPath, targetDir, { overwrite: true })
-      return list(archPath)
-    } catch (err) {
-      console.log(`Extraction err |${matchID}`)
-      return err
-    }
+  console.log(`Extracting . . . |${matchID}`)
+  try {
+    await unrar(archPath, targetDir, { overwrite: true })
+    return list(archPath)
+  } catch (err) {
+    console.log(`Extraction err |${matchID}`)
+    return err
+  }
 }
 
 async function getMatchesStats (startDate, endDate, numRetries) {
@@ -41,10 +41,10 @@ async function getMatchesStats (startDate, endDate, numRetries) {
       endDate: endDate,
       matchType: matchType.LAN
     })
-    console.log(`Starting ${startDate}-${endDate}`)
+    console.log(`Starting ${startDate} to ${endDate}`)
   } catch (err) {
     console.log(err)
-    if (numRetries === 0){
+    if (numRetries === 0) {
       console.log(`HLTV.getMatchesStats error (no more retries). ${startDate}-${endDate}`)
       return null
     } else {
@@ -56,20 +56,19 @@ async function getMatchesStats (startDate, endDate, numRetries) {
   return matchesStats
 }
 
-async function getMatchMapStats(matchStats, numRetries){
+async function getMatchMapStats (matchStats, numRetries) {
   if (numRetries === undefined) {
     numRetries = 6
   }
   var mapDate
-  if (typeof(matchStats) == 'number') {
+  if (typeof (matchStats) === 'number') {
     matchStats = {
-      id: matchStats,
+      id: matchStats
     }
     mapDate = '[Date N/A]'
   } else {
     mapDate = moment(matchStats.date).format('YYYY-MM-DD h:mm:ss ZZ')
   }
-
 
   try {
     await queryLimiter.removeTokens(1)
@@ -78,7 +77,7 @@ async function getMatchMapStats(matchStats, numRetries){
     })
   } catch (err) {
     console.log(err)
-    if (numRetries === 0){
+    if (numRetries === 0) {
       console.log(`HLTV.getMatchMapStats error. (no more retries) ${matchStats.id}||${mapDate}`)
       return null
     } else {
@@ -90,7 +89,7 @@ async function getMatchMapStats(matchStats, numRetries){
   return matchMapStats
 }
 
-async function getMatch(matchStats, matchId, numRetries){
+async function getMatch (matchStats, matchId, numRetries) {
   if (numRetries === undefined) {
     numRetries = 6
   }
@@ -103,20 +102,24 @@ async function getMatch(matchStats, matchId, numRetries){
   } catch (err) {
     var mapDate = moment(matchStats.date).format('YYYY-MM-DD h:mm:ss ZZ')
     console.log(err)
-    if (numRetries === 0){
+    if (numRetries === 0) {
       console.log(`HLTV.getMatch error (no more retries) ${matchStats.id}|${matchId}|${mapDate}`)
       return null
     } else {
       console.log(`HLTV.getMatch error (${numRetries} more retries) ${matchStats.id}|${matchId}|${mapDate}`)
       snooze(1200000) // 20 minutes
-      return getMatchMapStats(mmsId, numRetries - 1)
+      return getMatch(matchStats, matchId, numRetries - 1)
     }
   }
   return match
 }
 
+async function asyncForEach (array, callback) {
+  for (let index = 0; index < array.length; index++) {
+    await callback(array[index], index, array)
+  }
+}
 
-module.exports.extractArchive = extractArchive
 module.exports = {
   extractArchive,
   getMatchesStats,
@@ -124,6 +127,7 @@ module.exports = {
   getMatch,
   queryLimiter,
   queryRLM,
+  asyncForEach,
   snooze
 }
 // extractArchive(tarchPath)
