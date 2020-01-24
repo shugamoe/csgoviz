@@ -7,7 +7,7 @@ const { extractArchive } = require('./utils.js')
 const { importDemo, importMatch } = require('./import.js')
 const { exec } = require('child_process')
 var moment = require('moment')
-const { getMatchesStats, getMatchMapStats, getMatch, snooze, asyncForEach, checkDbForMap, checkDbForMatch} = require('./utils.js')
+const { clearMatches, getMatchesStats, getMatchMapStats, getMatch, snooze, asyncForEach, checkDbForMap, checkDbForMatch } = require('./utils.js')
 
 require('console-stamp')(console, 'mmm/dd/yyyy | HH:MM:ss.l')
 
@@ -33,7 +33,7 @@ async function downloadDay (dateStr) {
     if (dbHasMap.length === 0) { // If we don't have that mms_id in the Maps
       console.log(`Not in Map table. ${matchStats.id}`)
       // TODO(jcm): maybe gather up some of these commented out comments to be a debug=true print only?
-    } else if (dbHasMap.length === 1){
+    } else if (dbHasMap.length === 1) {
       console.log(`${dbHasMap.length} entries already in Map table. skipping ${matchStats.id}|`)
       orphanMapStats.push({ json: null, MapStatsID: matchStats.id, matchPageID: null, map: matchStats.map, skip: true })
       mapsInDb = mapsInDb + 1
@@ -47,12 +47,9 @@ async function downloadDay (dateStr) {
     var mapDate = moment(matchMapStats.date).format('YYYY-MM-DD h:mm:ss ZZ')
     var match = await getMatch(matchStats, matchMapStats.matchPageID)
 
-
-    // Download demo archive
-    // Import the match data into SQL database, in case something goes wrong with the download or the import.
-
     var dbHasMatch = await checkDbForMatch(matchStats, match)
-    if (dbHasMatch.length === 0) { // If we don't have that match_id in the Match table
+    // If missing the match from DB, import the match
+    if ((dbHasMatch.length === 0)) {
       do {
         // Snoozes function without pausing event loop
         await snooze(1000)
@@ -62,21 +59,23 @@ async function downloadDay (dateStr) {
 
       curImport = match.id
       await importMatch(match).then(curImport = '')
-    } else {
-      // if ((matchStats.id === 94246)){
-        // console.log(dbHasMap)
-        // console.log(`1 match, one map ${matchStats.id}|${match.id}`)
-      // }
+    // Otherwise if we have the match. . .
+    } else if ((dbHasMatch.length === 1)) {
+      // With this only one map(Match)Stats id (mms_id) will trigger an attempt
+      // to download the demos, since we clear matches table before downloading
+      // a date range, we can still download a match's demos only once
+      // when attempting to re-tread a date period.
       console.log(`Match already in table, skipping. . . ${matchStats.id}|${match.id}`)
+
       orphanMapStats.push({ json: matchMapStats, MapStatsID: matchStats.id, matchPageID: matchMapStats.matchPageID, map: matchMapStats.map })
-      // With this only one map(Match)Stats id (mms_id) will trigger an attempt to download the demos
-      // console.log(`${matchStats.id}|${match.id} sent to orphanMapStats. Already in Match table, skipping download. . .`)
       return null
     }
     if (matchStats.id === 94246) {
       console.log(`Problem mms_id: 94246 ${dbHasMap}`)
     }
 
+    // Download demo archive
+    // Import the match data into SQL database, in case something goes wrong with the download or the import.
     do {
       // Snoozes function without pausing event loop
       // console.log("concurDL: %d", concurDL)
@@ -128,7 +127,7 @@ async function downloadDay (dateStr) {
             missingMapStats = missingMapStats[0]
             importMatchMapStatsID = missingMapStats.statsId
 
-            importMatchMapStats = await getMatchMapStats(matchStats)
+            importMatchMapStats = await getMatchMapStats(importMatchMapStatsID)
           } else {
             console.log(`Orphan fetching error. |${match.id}|${matchDate}`)
             console.log(match.maps)
@@ -261,6 +260,8 @@ async function downloadDays (startDateStr, endDateStr) {
   var deltaDays = moment.duration(endDate.diff(startDate)).days()
   var addDays = Array.from(Array(deltaDays + 1).keys()) // so we can use forEach
 
+  console.log(`Clearing matches table (${await clearMatches()} rows)`)
+
   // addDays.forEach(async (days) => {
   await asyncForEach(addDays, async (days) => {
     var dlDate = moment(startDateStr).add(days, 'd').format('YYYY-MM-DD')
@@ -268,15 +269,5 @@ async function downloadDays (startDateStr, endDateStr) {
   })
 }
 
-// var test_getMatchesStats = JSON.parse(fs.readFileSync('./test_getMatchesStats.txt', 'utf8'))
-// var test_getMatchMapStats = JSON.parse(fs.readFileSync('./test_getMatchMapStats.txt', 'utf8'))
-// var test_getMatch = JSON.parse(fs.readFileSync('./test_getMatch.txt'))
-// downloadMatch(test_getMatch, test_getMatchMapStats)
-// downloadDay('2019-11-02').then(() => {
-// exec('rm -rf ~/matches/*.dem')
-// exec('rm -rf ~/matches/*.rar')
-// })
-//
-
 // downloadDays('2019-10-31', '2019-11-21')
-downloadDays('2019-10-31', '2019-10-31')
+downloadDays('2019-10-31', '2019-11-15')

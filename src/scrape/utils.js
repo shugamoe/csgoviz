@@ -4,6 +4,7 @@ const matchType = require('hltv').MatchType
 var Promise = require('bluebird')
 const moment = require('moment')
 var Models = require('./models.js')
+var db = require('./db.js')
 const { RateLimiterMemory, RateLimiterQueue } = require('rate-limiter-flexible')
 
 const queryRLM = new RateLimiterMemory({
@@ -150,6 +151,24 @@ async function checkDbForMatch(matchStats, match){
   })
 }
 
+async function clearMatches(){
+  // Super paranoid about await and promises here, might be overkill but I've
+  // seen evidence of async functions or promise returning functions called
+  // with await NOT waiting. . .
+  // Catching flak for promise executor functions should not be async, but it works.
+  // TODO(jcm): investigate later ^
+  db.sync()
+  return new Promise((resolve, reject) => {
+    try {
+      var rowsDeleted = Models.Match.destroy({ where: {}, truncate: true })
+    } catch (err) {
+      console.log('Error deleting matches table')
+    }
+    resolve(rowsDeleted)
+  })
+
+}
+
 module.exports = {
   extractArchive,
   getMatchesStats,
@@ -161,5 +180,6 @@ module.exports = {
   snooze,
   checkDbForMap,
   checkDbForMatch,
+  clearMatches,
 }
 // extractArchive(tarchPath)
