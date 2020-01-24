@@ -58,21 +58,20 @@ async function downloadDay (dateStr) {
       while (curImport)
 
       curImport = match.id
-      await importMatch(match).then(curImport = '')
-    // Otherwise if we have the match. . .
-    } else if ((dbHasMatch.length === 1)) {
-      // With this only one map(Match)Stats id (mms_id) will trigger an attempt
-      // to download the demos, since we clear matches table before downloading
-      // a date range, we can still download a match's demos only once
-      // when attempting to re-tread a date period.
-      console.log(`Match already in table, skipping. . . ${matchStats.id}|${match.id}`)
+      var matchImported = await importMatch(match).then(curImport = '')
 
+    } else if ((dbHasMatch.length === 1) || (!matchImported)) {
       orphanMapStats.push({ json: matchMapStats, MapStatsID: matchStats.id, matchPageID: matchMapStats.matchPageID, map: matchMapStats.map })
+      console.log(`Match already in table, skipping. . . ${matchStats.id}|${match.id}`)
       return null
+    } else {
+      console.log(`Huh. . . ${dbHasMatch}`)
     }
-    if (matchStats.id === 94246) {
-      console.log(`Problem mms_id: 94246 ${dbHasMap}`)
-    }
+
+
+    // Don't import the match if db already has it, or the import failed
+    // (usually due to pkey_error race condition since mms_ids for the same
+    // match are close.
 
     // Download demo archive
     // Import the match data into SQL database, in case something goes wrong with the download or the import.
@@ -148,9 +147,10 @@ async function downloadDay (dateStr) {
       await importDemo(matchContent.outDir + demo, importMatchMapStats, importMatchMapStatsID,
         match
       )
-        .then(() => {
+        .then((success) => {
           curImport = ''
-          numMapImports = numMapImports + 1
+          numMapImports = numMapImports + success
+          // console.log(success)
         })
         .catch((err) => {
           console.log(`Error importing demo ${importMatchMapStatsID}|${match.id}`)
@@ -181,6 +181,7 @@ async function downloadDay (dateStr) {
 }
 
 async function downloadMatch (match, matchMapStats, matchMapStatsID, matchStats) {
+  concurDL += 1
   var demoLink = match.demos.filter(demo => demo.name === 'GOTV Demo')[0].link
   demoLink = apiConfig.hltvUrl + demoLink
 
@@ -218,7 +219,6 @@ async function downloadMatch (match, matchMapStats, matchMapStatsID, matchStats)
         }
       })
     } else { // If archive is not done downloading
-      concurDL += 1
       var out = fs.createWriteStream(outPath, { flags: 'w' }) // Overwrites incomplete archives
         .on('error', (e) => {
         })
@@ -228,6 +228,7 @@ async function downloadMatch (match, matchMapStats, matchMapStatsID, matchStats)
           new FetchStream(demoLink)
             .pipe(out)
             .on('error', (err) => {
+              concurDL -= 1
               console.log(`File download error. Removing incomplete archive. ${matchMapStatsID}|${match.id}`)
               console.log(err)
               fs.unlink(outPath, (err) => {
@@ -260,7 +261,7 @@ async function downloadDays (startDateStr, endDateStr) {
   var deltaDays = moment.duration(endDate.diff(startDate)).days()
   var addDays = Array.from(Array(deltaDays + 1).keys()) // so we can use forEach
 
-  console.log(`Clearing matches table (${await clearMatches()} rows)`)
+  await clearMatches
 
   // addDays.forEach(async (days) => {
   await asyncForEach(addDays, async (days) => {
@@ -270,4 +271,4 @@ async function downloadDays (startDateStr, endDateStr) {
 }
 
 // downloadDays('2019-10-31', '2019-11-21')
-downloadDays('2019-10-31', '2019-11-15')
+downloadDays('2019-10-31', '2019-11-30')

@@ -6,6 +6,7 @@ const moment = require('moment')
 var Models = require('./models.js')
 var db = require('./db.js')
 const { RateLimiterMemory, RateLimiterQueue } = require('rate-limiter-flexible')
+const { Op } = require('sequelize')
 
 const queryRLM = new RateLimiterMemory({
   points: 1,
@@ -157,16 +158,23 @@ async function clearMatches(){
   // with await NOT waiting. . .
   // Catching flak for promise executor functions should not be async, but it works.
   // TODO(jcm): investigate later ^
-  db.sync()
-  return new Promise((resolve, reject) => {
-    try {
-      var rowsDeleted = Models.Match.destroy({ where: {}, truncate: true })
-    } catch (err) {
-      console.log('Error deleting matches table')
-    }
-    resolve(rowsDeleted)
+  return db.sync().then(() => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        var rowsDeleted = await Models.Match.destroy(
+          { where:
+            {maps_played:
+              {[Op.gt]: 1} 
+            },
+            truncate: true })
+        console.log('Matches table cleared.')
+      } catch (err) {
+        console.log('Error deleting matches table')
+        console.log(err)
+      }
+      resolve(rowsDeleted)
+    })
   })
-
 }
 
 module.exports = {
