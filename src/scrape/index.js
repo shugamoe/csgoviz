@@ -58,16 +58,14 @@ async function downloadDay (dateStr) {
       while (curImport)
 
       curImport = match.id
-      var matchImported = await importMatch(match).then(curImport = '')
+      var matchImported = await importMatch(match, matchStats).then(curImport = '')
+    }
 
-    } else if ((dbHasMatch.length === 1) || (!matchImported)) {
+    if ((dbHasMatch.length === 1) || (!matchImported)) {
       orphanMapStats.push({ json: matchMapStats, MapStatsID: matchStats.id, matchPageID: matchMapStats.matchPageID, map: matchMapStats.map })
       console.log(`Match already in table, skipping. . . ${matchStats.id}|${match.id}`)
       return null
-    } else {
-      console.log(`Huh. . . ${dbHasMatch}`)
     }
-
 
     // Don't import the match if db already has it, or the import failed
     // (usually due to pkey_error race condition since mms_ids for the same
@@ -261,7 +259,7 @@ async function downloadDays (startDateStr, endDateStr) {
   var deltaDays = moment.duration(endDate.diff(startDate)).days()
   var addDays = Array.from(Array(deltaDays + 1).keys()) // so we can use forEach
 
-  await clearMatches
+  await clearMatches()
 
   // addDays.forEach(async (days) => {
   await asyncForEach(addDays, async (days) => {

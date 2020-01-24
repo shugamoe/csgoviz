@@ -413,7 +413,7 @@ function importDemoFile (path, matchMapStats, matchMapStatsID, match) {
     })
 }
 
-function importMatch (match) {
+function importMatch (match, matchStats) {
   var client = new pg.Client(dbCon.connectionString)
   var query = Promise.promisify(client.query, { context: client })
   var matchImportErr
@@ -448,7 +448,7 @@ function importMatch (match) {
     .catch(e => {
       console.error(e.stack)
 
-      console.log(`ERROR!! Rolling back Match... |${match.id}`)
+      console.log(`ERROR!! Rolling back Match... ${matchStats.id}|${match.id}`)
       matchImportErr = true
       return query('ROLLBACK')
     })
@@ -457,21 +457,21 @@ function importMatch (match) {
       client.end()
       var matchDate = moment(match.date).format('YYYY-MM-DD h:mm:ss ZZ')
       if (!matchImportErr){
-        console.log(`Imported to Match table. |${match.id}|${matchDate}`)
+        console.log(`Imported to Match table. ${matchStats.id}|${match.id}|${matchDate}`)
         return true
       } else {
-        console.log(`Error for import to Match table. |${match.id}|${matchDate}`)
+        console.log(`Error for import to Match table. ${matchStats.id}|${match.id}|${matchDate}`)
         return false
       }
       // pg.end();
     })
 }
 
-function importMatchWrap (match) {
+function importMatchWrap (match, matchStats) {
   return new Promise((resolve, reject) => {
     db.sync(syncOpts)
       .then(() => {
-        importMatch(match).then(res => resolve(res))
+        importMatch(match, matchStats).then(res => resolve(res))
           .catch(e => reject(e))
       })
   })
