@@ -9,7 +9,7 @@ const { exec } = require('child_process')
 var moment = require('moment')
 const { clearMatches, getMatchesStats, getMatchMapStats, getMatch, snooze, asyncForEach, checkDbForMap, checkDbForMatch } = require('./utils.js')
 
-require('console-stamp')(console, 'mmm/dd/yyyy | HH:MM:ss.l')
+require('console-stamp')(console, 'mmm/dd/yyyy | HH:MM.l')
 
 var orphanMapStats = []
 var problemImports = []
@@ -44,7 +44,7 @@ async function downloadDay (dateStr) {
     }
 
     var matchMapStats = await getMatchMapStats(matchStats)
-    var mapDate = moment(matchMapStats.date).format('YYYY-MM-DD h:mm:ss ZZ')
+    var mapDate = moment(matchMapStats.date).format('YYYY-MM-DD h:mm ZZ')
     var match = await getMatch(matchStats, matchMapStats.matchPageID)
 
     var dbHasMatch = await checkDbForMatch(matchStats, match)
@@ -58,7 +58,8 @@ async function downloadDay (dateStr) {
       while (curImport)
 
       curImport = match.id
-      var matchImported = await importMatch(match, matchStats).then(curImport = '')
+      var matchImported = await importMatch(match, matchStats)
+      curImport = ''
     }
 
     if ((dbHasMatch.length === 1) || (!matchImported)) {
@@ -79,10 +80,11 @@ async function downloadDay (dateStr) {
       await snooze(1000)
     }
     while (concurDL >= 2)
+    concurDL += 1
 
     try {
       var matchContent = await downloadMatch(match, matchMapStats, matchStats.id, matchStats)
-      var matchDate = moment(match.date).format('YYYY-MM-DD h:mm:ss ZZ')
+      var matchDate = moment(match.date).format('YYYY-MM-DD h:mm ZZ')
     } catch (err) {
       console.log(`Error downloading? ${matchStats.id}|${match.id}`)
       console.log(err)
@@ -142,44 +144,50 @@ async function downloadDay (dateStr) {
       while (curImport)
 
       curImport = importMatchMapStatsID + '|' + match.id
-      await importDemo(matchContent.outDir + demo, importMatchMapStats, importMatchMapStatsID,
+      var demoImportSuccess = await importDemo(matchContent.outDir + demo, importMatchMapStats, importMatchMapStatsID,
         match
       )
-        .then((success) => {
-          curImport = ''
-          numMapImports = numMapImports + success
-          // console.log(success)
-        })
-        .catch((err) => {
-          console.log(`Error importing demo ${importMatchMapStatsID}|${match.id}`)
-          console.log(err)
-          // TODO(jcm): make table for this, chance to try out sequelize only row inserts?
-          problemImports.push({ match: match, matchMapStats: importMatchMapStats })
-        })
+      curImport = ''
+      numMapImports += demoImportSuccess
+      if (demoImportSuccess === false) {
+        // TODO(jcm): make table for this, chance to try out sequelize only row inserts?
+        console.log(`Error importing demo ${importMatchMapStatsID}|${match.id}`)
+        problemImports.push({ match: match, matchMapStats: importMatchMapStats })
+      }
+      console.log(`${numMapImports + mapsInDb}/${matchesStats.length} demos now in Maps table [${dateStr}].`)
       // Remove .dem file (it's sitting in the .rar archive anyway), can optionally kill
       exec(`rm ${matchContent.outDir + demo}`)
+      // .then((success) => {
+      // curImport = ''
+      // numMapImports = numMapImports + success
+      // console.log(`${numMapImports + mapsInDb}/${matchesStats.length} demos imported.`)
+      // Remove .dem file (it's sitting in the .rar archive anyway), can optionally kill
+      // exec(`rm ${matchContent.outDir + demo}`)
+      // console.log(success)
+      // })
+      // .catch((err) => {
+      // console.log(`Error importing demo ${importMatchMapStatsID}|${match.id}`)
+      // console.log(err)
+      // TODO(jcm): make table for this, chance to try out sequelize only row inserts?
+      // problemImports.push({ match: match, matchMapStats: importMatchMapStats })
+      // })
     })
-      // Optionally remove .rar archive?
-      // exec(`rm -rf ${matchContent.outDir + 'archive.rar'}`)
-      .catch((err) => {
-        console.log(`Error in downloadMatch. ${matchStats.id}|${matchMapStats.matchPageID}|${mapDate}`)
-        console.log(err)
-      })
+    // Optionally remove .rar archive?
+    // exec(`rm -rf ${matchContent.outDir + 'archive.rar'}`)
+    console.log(`Done with |${match.id}`)
     return null
   }))
-    .then(res => {
-      console.log(`${numMapImports + mapsInDb}/${matchesStats.length} maps imported for ${dateStr}. (${mapsInDb} maps already in DB.)`)
-    })
+  console.log(`${numMapImports + mapsInDb}/${matchesStats.length} maps imported for ${dateStr}. (${mapsInDb} maps already in DB.)`)
   // return {
-    // imports: numMapImports,
-    // total: matchesStats.length,
-    // mapsInDb: mapsInDb,
-    // mapArr: mapArr
+  // imports: numMapImports,
+  // total: matchesStats.length,
+  // mapsInDb: mapsInDb,
+  // mapArr: mapArr
   // }
 }
 
 async function downloadMatch (match, matchMapStats, matchMapStatsID, matchStats) {
-  concurDL += 1
+  // concurDL += 1
   var demoLink = match.demos.filter(demo => demo.name === 'GOTV Demo')[0].link
   demoLink = apiConfig.hltvUrl + demoLink
 
@@ -202,7 +210,7 @@ async function downloadMatch (match, matchMapStats, matchMapStatsID, matchStats)
 
         var demos = files.filter(f => f.substr(f.length - 3) === 'dem')
         if (demos.length > 0) {
-          console.log(`${matchStats.id}|${match.id} Extracted demos found.`)
+          console.log(`Extracted demos found. ${matchStats.id}|${match.id} `)
           resolve({
             outDir: outDir,
             demos: demos
@@ -221,7 +229,7 @@ async function downloadMatch (match, matchMapStats, matchMapStatsID, matchStats)
         .on('error', (e) => {
         })
         .on('ready', () => {
-          console.log(`Starting download. . . ${matchMapStatsID}|${match.id}`)
+          console.log(`Starting download. . . ${matchMapStatsID}|${match.id} {${concurDL} DL's now}`)
 
           new FetchStream(demoLink)
             .pipe(out)
@@ -237,9 +245,9 @@ async function downloadMatch (match, matchMapStats, matchMapStatsID, matchStats)
             .on('finish', async () => {
               var demos = await extractArchive(outPath, outDir, match.id)
               // Make quick flag file to show that it's complete
-              fs.writeFile(outDir + 'dlDone.txt', `Downloaded ${moment().format('YYYY-MM-DD h:mm:ss ZZ')}`, function (err) {
+              fs.writeFile(outDir + 'dlDone.txt', `Downloaded ${moment().format('YYYY-MM-DD h:mm ZZ')}`, function (err) {
                 if (err) throw err
-                console.log(`Archive downloaded ${matchMapStatsID}|${match.id}`)
+                console.log(`Archive downloaded ${matchMapStatsID}|${match.id} {${concurDL} DL's now}`)
               })
               concurDL -= 1
               return {

@@ -326,7 +326,7 @@ function importDemoBuffer (client, buffer, matchMapStatsID, callback) {
 function importDemoFile (path, matchMapStats, matchMapStatsID, match) {
   var commitFail
   // console.log('Connecting to database...');
-  var matchDate = moment(match.date).format('YYYY-MM-DD h:mm:ss ZZ')
+  var matchDate = moment(match.date).format('YYYY-MM-DD h:mm ZZ')
   console.log(`Starting import to Map table. ${matchMapStatsID}|${matchMapStats.matchPageID}|${matchDate}`)
   var client = new pg.Client(dbCon.connectionString)
 
@@ -400,7 +400,7 @@ function importDemoFile (path, matchMapStats, matchMapStatsID, match) {
     })
 
     .then(() => {
-      var matchDate = moment(match.date).format('YYYY-MM-DD h:mm:ss ZZ')
+      var matchDate = moment(match.date).format('YYYY-MM-DD h:mm ZZ')
       client.end()
       if (commitFail === true) {
         console.log(`Map table import fail. ${matchMapStatsID}|${match.id}|${matchDate}`)
@@ -455,8 +455,8 @@ function importMatch (match, matchStats) {
 
     .then(() => {
       client.end()
-      var matchDate = moment(match.date).format('YYYY-MM-DD h:mm:ss ZZ')
-      if (!matchImportErr){
+      var matchDate = moment(match.date).format('YYYY-MM-DD h:mm ZZ')
+      if (!matchImportErr) {
         console.log(`Imported to Match table. ${matchStats.id}|${match.id}|${matchDate}`)
         return true
       } else {
