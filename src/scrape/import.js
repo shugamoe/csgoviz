@@ -456,7 +456,7 @@ function importMatch (match, matchStats) {
     .then(() => {
       client.end()
       var matchDate = moment(match.date).format('YYYY-MM-DD h:mm ZZ')
-      if (!matchImportErr) {
+      if (!matchImportErr){
         console.log(`Imported to Match table. ${matchStats.id}|${match.id}|${matchDate}`)
         return true
       } else {

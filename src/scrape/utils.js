@@ -16,9 +16,6 @@ const queryLimiter = new RateLimiterQueue(queryRLM, {
   maxQueueSize: 1000
 })
 
-setTimeout(function () {
-}, 5000)
-
 const snooze = ms => new Promise(resolve => setTimeout(resolve, ms))
 
 async function extractArchive (archPath, targetDir, matchID) {

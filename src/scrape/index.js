@@ -13,7 +13,7 @@ require('console-stamp')(console, 'mmm/dd/yyyy | HH:MM.l')
 
 var orphanMapStats = []
 var problemImports = []
-var concurDL = 0
+var concurDL = 0 // TODO(jcm): Change to array to track mms/match ids.
 var curImport = ''
 
 async function downloadDay (dateStr) {
@@ -52,10 +52,13 @@ async function downloadDay (dateStr) {
     if ((dbHasMatch.length === 0)) {
       do {
         // Snoozes function without pausing event loop
+        if (curImport !== '') {
+          console.log(`Match import (${matchStats.id}|${match.id} waiting. . . curImport = ${curImport}`)
+        }
         await snooze(1000)
         // console.log(`Import for ${matchArr[i].id}-${matchContent.demos[d]} waiting. . . curImport = ${curImport}`)
       }
-      while (curImport)
+      while (curImport !== '')
 
       curImport = match.id
       var matchImported = await importMatch(match, matchStats)
@@ -76,7 +79,9 @@ async function downloadDay (dateStr) {
     // Import the match data into SQL database, in case something goes wrong with the download or the import.
     do {
       // Snoozes function without pausing event loop
-      // console.log("concurDL: %d", concurDL)
+      if (concurDL >= 2) {
+        // console.log(`Demo download halted. (${matchStats.id}|${match.id}) ${concurDL} DL's already occurring.`)
+      }
       await snooze(1000)
     }
     while (concurDL >= 2)
@@ -121,7 +126,8 @@ async function downloadDay (dateStr) {
           // if games in match were played before/after midnight
           // console.log(demo)
           // console.log(orphanMapStats)
-          var missingMapStats = match.maps.filter(map => demo.match(MapDict[map.name]))
+          var missingMapStats = match.maps.filter(map =>
+            (demo.match(MapDict[map.name]) && map.statsId !== undefined))
           if (missingMapStats.length === 1) {
             missingMapStats = missingMapStats[0]
             importMatchMapStatsID = missingMapStats.statsId
@@ -130,7 +136,9 @@ async function downloadDay (dateStr) {
           } else {
             console.log(`Orphan fetching error. |${match.id}|${matchDate}`)
             console.log(match.maps)
+            console.log(missingMapStats)
             console.log(demo)
+            return null // Skip importing this demo
           }
           console.log(`Fetched matchMapStats. (No orphans found.) ${importMatchMapStatsID}|${match.id}|${matchDate}`)
         }
@@ -138,10 +146,12 @@ async function downloadDay (dateStr) {
 
       do {
         // Snoozes function without pausing event loop
+        if (curImport !== '') {
+          console.log(`Demos import (${importMatchMapStatsID}|${match.id} waiting. . . curImport = ${curImport}`)
+        }
         await snooze(1000)
-        // console.log(`Import for ${matchArr[i].id}-${matchContent.demos[d]} waiting. . . curImport = ${curImport}`)
       }
-      while (curImport)
+      while (curImport !== '')
 
       curImport = importMatchMapStatsID + '|' + match.id
       var demoImportSuccess = await importDemo(matchContent.outDir + demo, importMatchMapStats, importMatchMapStatsID,
@@ -211,6 +221,7 @@ async function downloadMatch (match, matchMapStats, matchMapStatsID, matchStats)
         var demos = files.filter(f => f.substr(f.length - 3) === 'dem')
         if (demos.length > 0) {
           console.log(`Extracted demos found. ${matchStats.id}|${match.id} `)
+          concurDL -= 1
           resolve({
             outDir: outDir,
             demos: demos
@@ -218,6 +229,7 @@ async function downloadMatch (match, matchMapStats, matchMapStatsID, matchStats)
         } else {
           console.log(`Re-extracting demos ${matchStats.id}|${match.id}`)
           demos = await extractArchive(outPath, outDir, match.id)
+          concurDL -= 1
           resolve({
             outDir: outDir,
             demos: demos
@@ -250,10 +262,10 @@ async function downloadMatch (match, matchMapStats, matchMapStatsID, matchStats)
                 console.log(`Archive downloaded ${matchMapStatsID}|${match.id} {${concurDL} DL's now}`)
               })
               concurDL -= 1
-              return {
+              resolve({
                 outDir: outDir,
                 demos: demos || undefined
-              }
+              })
             })
         })
     }
