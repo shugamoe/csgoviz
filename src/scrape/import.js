@@ -12,7 +12,6 @@ var assert = require('assert')
 var demofile = require('demofile')
 // var pace = require('pace');
 var _ = require('lodash')
-var async = require('async')
 var Promise = require('bluebird')
 var pg = require('pg')
 var copyFrom = require('pg-copy-streams').from
@@ -351,7 +350,10 @@ function importDemoFile (path, matchMapStats, matchMapStatsID, match) {
       var buffer = fulfilled[1]
       var header = demofile.parseHeader(buffer)
 
-      // console.log('Creating map...');
+      var tickrate = Math.round(header.playbackTicks / header.playbackTime)
+      if (isNaN(tickrate)) {
+        tickrate = null // Don't want NaN error to mess up import
+      }
 
       return [
         ...fulfilled,
@@ -360,7 +362,7 @@ function importDemoFile (path, matchMapStats, matchMapStatsID, match) {
           header.mapName,
           header.gameDirectory,
           JSON.stringify({ header }),
-          Math.round(header.playbackTicks / header.playbackTime),
+          tickrate,
           new Date(matchMapStats.date).toUTCString(),
           JSON.stringify(matchMapStats),
           matchMapStatsID,
@@ -456,7 +458,7 @@ function importMatch (match, matchStats) {
     .then(() => {
       client.end()
       var matchDate = moment(match.date).format('YYYY-MM-DD h:mm ZZ')
-      if (!matchImportErr){
+      if (!matchImportErr) {
         console.log(`Imported to Match table. ${matchStats.id}|${match.id}|${matchDate}`)
         return true
       } else {

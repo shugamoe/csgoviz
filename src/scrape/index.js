@@ -53,7 +53,7 @@ async function downloadDay (dateStr) {
       do {
         // Snoozes function without pausing event loop
         if (curImport !== '') {
-          console.log(`Match import (${matchStats.id}|${match.id} waiting. . . curImport = ${curImport}`)
+          // console.log(`Match import (${matchStats.id}|${match.id} waiting. . . curImport = ${curImport}`)
         }
         await snooze(1000)
         // console.log(`Import for ${matchArr[i].id}-${matchContent.demos[d]} waiting. . . curImport = ${curImport}`)
@@ -147,7 +147,7 @@ async function downloadDay (dateStr) {
       do {
         // Snoozes function without pausing event loop
         if (curImport !== '') {
-          console.log(`Demos import (${importMatchMapStatsID}|${match.id} waiting. . . curImport = ${curImport}`)
+          // console.log(`Demos import (${importMatchMapStatsID}|${match.id} waiting. . . curImport = ${curImport}`)
         }
         await snooze(1000)
       }
@@ -289,4 +289,5 @@ async function downloadDays (startDateStr, endDateStr) {
 }
 
 // downloadDays('2019-10-31', '2019-11-21')
-downloadDays('2019-10-31', '2019-11-30')
+// downloadDays('2019-10-31', '2019-11-30')
+downloadDays('2019-11-02', '2019-11-02')

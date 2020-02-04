@@ -39,7 +39,7 @@ function gettestData () {
       sleep(1500)
       var matchPageID = MatchMapStats.matchPageID
       // Keep the round summary data in MatchMapStats to save to DB later
-      return Promise.all([HLTV.getMatch({ id: matchPageID }), MatchMapStats])
+      return Promise.all([HLTV.getMatch({ id: 2337561 }), MatchMapStats])
     })
 
     // Write getMatch then exit
@@ -51,7 +51,7 @@ function gettestData () {
     })
 }
 
-gettestData()
+// gettestData()
 var test_getMatchesStats = JSON.parse(fs.readFileSync('./test_getMatchesStats.txt', 'utf8'))
 var test_getMatchMapStats = JSON.parse(fs.readFileSync('./test_getMatchMapStats.txt', 'utf8'))
 var test_getMatch = JSON.parse(fs.readFileSync('./test_getMatch.txt'))

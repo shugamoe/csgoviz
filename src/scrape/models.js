@@ -95,7 +95,7 @@ var Map = db.define('map', {
   level: { type: Sequelize.STRING, allowNull: false },
   game: { type: Sequelize.STRING, allowNull: false },
   data: { type: Sequelize.JSONB },
-  tickrate: { type: Sequelize.INTEGER, allowNull: false },
+  tickrate: { type: Sequelize.INTEGER, allowNull: true }, // demo headers give NaN tickrates
   date: { type: Sequelize.DATE, allowNull: false },
   mms_data: { type: Sequelize.JSONB, allowNull: true },
   mms_id: { type: Sequelize.INTEGER, allowNull: false, primaryKey: true }, // MatchMapStat ID
