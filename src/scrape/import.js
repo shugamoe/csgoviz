@@ -448,7 +448,7 @@ function importMatch (match, matchStats) {
     })
 
     .catch(e => {
-      console.error(e.stack)
+      console.log(e.stack)
 
       console.log(`ERROR!! Rolling back Match... ${matchStats.id}|${match.id}`)
       matchImportErr = true
