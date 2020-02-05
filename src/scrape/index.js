@@ -232,7 +232,7 @@ async function downloadMatch (match, matchMapStats, matchMapStatsID, matchStats)
             demos: demos
           })
         } else {
-          console.log(`Re-extracting demos ${matchStats.id}|${match.id}`)
+          // console.log(`Re-extracting demos ${matchStats.id}|${match.id}`)
           demos = await extractArchive(outPath, outDir, match.id)
           concurDL -= 1
           resolve({
