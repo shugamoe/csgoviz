@@ -132,7 +132,7 @@ async function downloadDay (dateStr) {
           // console.log(demo)
           // console.log(orphanMapStats)
           var missingMapStats = match.maps.filter(map =>
-            (Boolean(demo.match(MapDict[map.name])) && map.statsId !== undefined))
+            (Boolean(demo.match(MapDict[map.name])[0]) && map.statsId !== undefined))
           if (missingMapStats.length === 1) {
             missingMapStats = missingMapStats[0]
             importMatchMapStatsID = missingMapStats.statsId
