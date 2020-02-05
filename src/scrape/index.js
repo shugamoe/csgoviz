@@ -112,7 +112,7 @@ async function downloadDay (dateStr) {
         var matchingOrphans = orphanMapStats.filter(ms => {
           var mmsIdInMatch = match.maps.filter(map => map.statsId === ms.MapStatsID).length === 1
           var sameMatch = ms.matchPageID === match.id
-          var sameMap = demo.match(MapDict[ms.map])
+          var sameMap = Boolean(demo.match(MapDict[ms.map])[0])
           return (sameMap && (mmsIdInMatch || sameMatch))
         })
         if (matchingOrphans.length >= 1) {
@@ -132,7 +132,7 @@ async function downloadDay (dateStr) {
           // console.log(demo)
           // console.log(orphanMapStats)
           var missingMapStats = match.maps.filter(map =>
-            (demo.match(MapDict[map.name]) && map.statsId !== undefined))
+            (Boolean(demo.match(MapDict[map.name])) && map.statsId !== undefined))
           if (missingMapStats.length === 1) {
             missingMapStats = missingMapStats[0]
             importMatchMapStatsID = missingMapStats.statsId
