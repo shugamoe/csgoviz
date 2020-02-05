@@ -90,7 +90,7 @@ var EntityProp = db.define('entity_prop', {
  * @property {object} data
  * @property {number} tickrate
  */
-var Map = db.define('map', {
+var Maptable = db.define('map', {
   title: { type: Sequelize.STRING, allowNull: false },
   level: { type: Sequelize.STRING, allowNull: false },
   game: { type: Sequelize.STRING, allowNull: false },
@@ -99,7 +99,7 @@ var Map = db.define('map', {
   date: { type: Sequelize.DATE, allowNull: false },
   mms_data: { type: Sequelize.JSONB, allowNull: true },
   // match_id: { type: Sequelize.INTEGER, allowNull: false }
-  mms_id: { type: Sequelize.INTEGER, allowNull: false, primaryKey: true } // MatchMapStat ID
+  mms_id: { type: Sequelize.INTEGER, allowNull: false, primaryKey: true }, // MatchMaptableStat ID
 }, {
   indexes: [
     {
@@ -128,12 +128,12 @@ var Match = db.define('match', {
 }
 )
 
-Map.hasMany(Event, { allowNull: false, onDelete: 'cascade' })
-Map.hasMany(EntityProp, { allowNull: false, onDelete: 'cascade' })
-Match.hasMany(Map, { allowNull: true, foreignKey: 'match_id' })
+Maptable.hasMany(Event, { allowNull: false, onDelete: 'cascade' })
+Maptable.hasMany(EntityProp, { allowNull: false, onDelete: 'cascade' })
+Match.hasMany(Maptable, { allowNull: true, foreignKey: 'match_id' })
 
 module.exports = {
-  Map,
+  Map: Maptable,
   Event,
   EntityProp,
   Match
