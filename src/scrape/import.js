@@ -130,7 +130,7 @@ function importDemoBuffer (client, buffer, matchMapStatsID, callback) {
       Promise.promisify(entityPropStream.end, { context: entityPropStream })()
     ])
       .then(() => {
-        // console.log('Copying entity property data to database...');
+        // console.log('Copying entity property data to database...')
 
         return Promise.promisify(done => {
           var stream = client.query(copyFrom("COPY entity_props (map_mms_id, index, tick, prop, value) FROM STDIN WITH NULL 'null'"))
@@ -140,14 +140,14 @@ function importDemoBuffer (client, buffer, matchMapStatsID, callback) {
 
           fileStream.pipe(stream)
             .on('finish', () => {
-              // console.log('Copied.');
+              // console.log(`Copied entity_props. ${matchMapStatsID}|`);
               fs.unlink(tempDeferredFilename, done)
             })
             .on('error', done)
         })()
       })
       .then(() => {
-        // console.log('All streams closed.');
+        // console.log(`All streams closed. ${matchMapStatsID}|`);
         callback(null)
       })
       .catch(callback)
@@ -228,7 +228,7 @@ function importDemoBuffer (client, buffer, matchMapStatsID, callback) {
     }
 
     // var updateHash = XXHash.hash(new Buffer(e.entity.index + fullPropName), 0xCAFEBABE);
-    var updateHash = XXHash.hash(Buffer.alloc(e.entity.index + fullPropName), 0xCAFEBABE)
+    var updateHash = XXHash.hash(Buffer.from(e.entity.index + fullPropName), 0xCAFEBABE)
 
     bufferedEntityUpdates.set(updateHash, [
       matchMapStatsID,

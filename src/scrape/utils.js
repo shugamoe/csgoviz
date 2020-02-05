@@ -19,14 +19,14 @@ const queryLimiter = new RateLimiterQueue(queryRLM, {
 const snooze = ms => new Promise(resolve => setTimeout(resolve, ms))
 
 async function extractArchive (archPath, targetDir, matchID) {
-    console.log(`Extracting . . . |${matchID}`)
-    try {
-      await unrar(archPath, targetDir, { overwrite: true })
-      return list(archPath)
-    } catch (err) {
-      console.log(`Extraction err |${matchID}`)
-      return err
-    }
+  console.log(`Extracting . . . |${matchID}`)
+  try {
+    await unrar(archPath, targetDir, { overwrite: true })
+    return list(archPath)
+  } catch (err) {
+    console.log(`Extraction err |${matchID}`)
+    return err
+  }
 }
 
 async function getMatchesStats (startDate, endDate, numRetries) {
@@ -44,7 +44,7 @@ async function getMatchesStats (startDate, endDate, numRetries) {
     console.log(`Starting ${startDate} to ${endDate}`)
   } catch (err) {
     console.log(err)
-    if (numRetries === 0){
+    if (numRetries === 0) {
       console.log(`HLTV.getMatchesStats error (no more retries). ${startDate}-${endDate}`)
       return null
     } else {
@@ -56,20 +56,19 @@ async function getMatchesStats (startDate, endDate, numRetries) {
   return matchesStats
 }
 
-async function getMatchMapStats(matchStats, numRetries){
+async function getMatchMapStats (matchStats, numRetries) {
   if (numRetries === undefined) {
     numRetries = 6
   }
   var mapDate
-  if (typeof(matchStats) == 'number') {
+  if (typeof (matchStats) === 'number') {
     matchStats = {
-      id: matchStats,
+      id: matchStats
     }
     mapDate = '[Date N/A]'
   } else {
     mapDate = moment(matchStats.date).format('YYYY-MM-DD h:mm:ss ZZ')
   }
-
 
   try {
     await queryLimiter.removeTokens(1)
@@ -78,7 +77,7 @@ async function getMatchMapStats(matchStats, numRetries){
     })
   } catch (err) {
     console.log(err)
-    if (numRetries === 0){
+    if (numRetries === 0) {
       console.log(`HLTV.getMatchMapStats error. (no more retries) ${matchStats.id}||${mapDate}`)
       return null
     } else {
@@ -90,7 +89,7 @@ async function getMatchMapStats(matchStats, numRetries){
   return matchMapStats
 }
 
-async function getMatch(matchStats, matchId, numRetries){
+async function getMatch (matchStats, matchId, numRetries) {
   if (numRetries === undefined) {
     numRetries = 6
   }
@@ -103,7 +102,7 @@ async function getMatch(matchStats, matchId, numRetries){
   } catch (err) {
     var mapDate = moment(matchStats.date).format('YYYY-MM-DD h:mm:ss ZZ')
     console.log(err)
-    if (numRetries === 0){
+    if (numRetries === 0) {
       console.log(`HLTV.getMatch error (no more retries) ${matchStats.id}|${matchId}|${mapDate}`)
       return null
     } else {
@@ -115,41 +114,41 @@ async function getMatch(matchStats, matchId, numRetries){
   return match
 }
 
-async function asyncForEach(array, callback) {
+async function asyncForEach (array, callback) {
   for (let index = 0; index < array.length; index++) {
-    await callback(array[index], index, array);
+    await callback(array[index], index, array)
   }
 }
 
-async function checkDbForMap(matchStats){
+async function checkDbForMap (matchStats) {
   return new Promise(async (resolve, reject) => {
     try {
       var dbHasMap = await Models.Map.findAll({
-              attributes: ['mms_id'],
+        attributes: ['mms_id'],
         where: { mms_id: matchStats.id }
       })
-    } catch(err) {
+    } catch (err) {
       console.log(`Map table check error. ${matchStats.id}`)
     }
     resolve(dbHasMap)
   })
 }
 
-async function checkDbForMatch(matchStats, match){
+async function checkDbForMatch (matchStats, match) {
   return new Promise(async (resolve, reject) => {
     try {
       var dbHasMatch = await Models.Match.findAll({
-              attributes: ['match_id'],
+        attributes: ['match_id'],
         where: { match_id: match.id }
       })
-    } catch(err) {
+    } catch (err) {
       console.log(`Match table check error. ${matchStats.id}|${match.id}`)
     }
     resolve(dbHasMatch)
   })
 }
 
-async function clearMatches(){
+async function clearMatches () {
   // Super paranoid about await and promises here, might be overkill but I've
   // seen evidence of async functions or promise returning functions called
   // with await NOT waiting. . .
@@ -159,11 +158,14 @@ async function clearMatches(){
     return new Promise(async (resolve, reject) => {
       try {
         var rowsDeleted = await Models.Match.destroy(
-          { where:
-            {maps_played:
-              {[Op.gt]: 1} 
+          {
+            where:
+            {
+              maps_played:
+              { [Op.gt]: 1 }
             },
-            truncate: true })
+            truncate: true
+          })
         console.log('Matches table cleared.')
       } catch (err) {
         console.log('Error deleting matches table')
@@ -173,6 +175,9 @@ async function clearMatches(){
     })
   })
 }
+
+// TODO(jcm): Add an auditDB function to attempt re-downloads of matches with
+// fewer maps in the db then available demos.
 
 module.exports = {
   extractArchive,
@@ -185,6 +190,6 @@ module.exports = {
   snooze,
   checkDbForMap,
   checkDbForMatch,
-  clearMatches,
+  clearMatches
 }
 // extractArchive(tarchPath)

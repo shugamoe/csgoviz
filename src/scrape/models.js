@@ -98,8 +98,8 @@ var Map = db.define('map', {
   tickrate: { type: Sequelize.INTEGER, allowNull: true }, // demo headers give NaN tickrates
   date: { type: Sequelize.DATE, allowNull: false },
   mms_data: { type: Sequelize.JSONB, allowNull: true },
-  mms_id: { type: Sequelize.INTEGER, allowNull: false, primaryKey: true }, // MatchMapStat ID
-  match_id: { type: Sequelize.INTEGER, allowNull: false }
+  // match_id: { type: Sequelize.INTEGER, allowNull: false }
+  mms_id: { type: Sequelize.INTEGER, allowNull: false, primaryKey: true } // MatchMapStat ID
 }, {
   indexes: [
     {
@@ -130,7 +130,7 @@ var Match = db.define('match', {
 
 Map.hasMany(Event, { allowNull: false, onDelete: 'cascade' })
 Map.hasMany(EntityProp, { allowNull: false, onDelete: 'cascade' })
-// Match.hasMany(Map, { allowNull: true, foreignKey: 'match_id' })
+Match.hasMany(Map, { allowNull: true, foreignKey: 'match_id' })
 
 module.exports = {
   Map,

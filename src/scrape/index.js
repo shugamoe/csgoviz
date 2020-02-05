@@ -7,7 +7,7 @@ const { extractArchive } = require('./utils.js')
 const { importDemo, importMatch } = require('./import.js')
 const { exec } = require('child_process')
 var moment = require('moment')
-const { clearMatches, getMatchesStats, getMatchMapStats, getMatch, snooze, asyncForEach, checkDbForMap, checkDbForMatch } = require('./utils.js')
+const { getMatchesStats, getMatchMapStats, getMatch, snooze, asyncForEach, checkDbForMap, checkDbForMatch } = require('./utils.js')
 
 require('console-stamp')(console, 'mmm/dd/yyyy | HH:MM.l')
 
@@ -93,6 +93,11 @@ async function downloadDay (dateStr) {
     } catch (err) {
       console.log(`Error downloading? ${matchStats.id}|${match.id}`)
       console.log(err)
+      if (matchContent === undefined) {
+        console.log()
+        problemImports.push({ match: match, matchMapStats: matchStats })
+        return null
+      }
     }
     // matchContent.demos.forEach(async (demo) => {
     await asyncForEach(matchContent.demos, async (demo) => {
@@ -279,8 +284,6 @@ async function downloadDays (startDateStr, endDateStr) {
   var deltaDays = moment.duration(endDate.diff(startDate)).days()
   var addDays = Array.from(Array(deltaDays + 1).keys()) // so we can use forEach
 
-  await clearMatches()
-
   // addDays.forEach(async (days) => {
   await asyncForEach(addDays, async (days) => {
     var dlDate = moment(startDateStr).add(days, 'd').format('YYYY-MM-DD')
@@ -290,4 +293,9 @@ async function downloadDays (startDateStr, endDateStr) {
 
 // downloadDays('2019-10-31', '2019-11-21')
 // downloadDays('2019-10-31', '2019-11-30')
-downloadDays('2019-09-01', '2019-12-31')
+
+try {
+  downloadDays('2019-09-01', '2019-12-31')
+} catch (err) {
+  console.log(err)
+}
