@@ -1,5 +1,9 @@
+const fs = require('fs')
+const { exec } = require('child_process')
 const { unrar, list } = require('unrar-promise')
 const { HLTV } = require('hltv')
+const apiConfig = require('hltv').default.config
+const FetchStream = require('fetch').FetchStream
 const matchType = require('hltv').MatchType
 var Promise = require('bluebird')
 const moment = require('moment')
@@ -7,6 +11,8 @@ var Models = require('./models.js')
 var db = require('./db.js')
 const { RateLimiterMemory, RateLimiterQueue } = require('rate-limiter-flexible')
 const { Op } = require('sequelize')
+const MapDict = require('./maps.json')
+const { importDemo } = require('./import.js')
 
 const queryRLM = new RateLimiterMemory({
   points: 1,
@@ -31,7 +37,7 @@ async function extractArchive (archPath, targetDir, matchID) {
 
 async function getMatchesStats (startDate, endDate, numRetries) {
   if (numRetries === undefined) {
-    numRetries = 6
+    numRetries = 1
   }
 
   try {
@@ -58,7 +64,7 @@ async function getMatchesStats (startDate, endDate, numRetries) {
 
 async function getMatchMapStats (matchStats, numRetries) {
   if (numRetries === undefined) {
-    numRetries = 6
+    numRetries = 1
   }
   var mapDate
   if (typeof (matchStats) === 'number') {
@@ -91,7 +97,7 @@ async function getMatchMapStats (matchStats, numRetries) {
 
 async function getMatch (matchStats, matchId, numRetries) {
   if (numRetries === undefined) {
-    numRetries = 6
+    numRetries = 1
   }
 
   try {
@@ -121,6 +127,16 @@ async function asyncForEach (array, callback) {
 }
 
 async function checkDbForMap (matchStats) {
+  var mapDate
+  if (typeof (matchStats) === 'number') {
+    matchStats = {
+      id: matchStats
+    }
+    mapDate = '[Date N/A]'
+  } else {
+    mapDate = moment(matchStats.date).format('YYYY-MM-DD h:mm:ss ZZ')
+  }
+
   return new Promise(async (resolve, reject) => {
     try {
       var dbHasMap = await Models.Map.findAll({
@@ -176,6 +192,170 @@ async function clearMatches () {
   })
 }
 
+async function auditDB () {
+  const [results, _] = await db.query(`
+  SELECT matches.match_id, matches.data, matches.maps_played - T1.maps_in_db AS maps_missing
+  FROM matches 
+    INNER JOIN (SELECT match_id, COUNT(*) AS maps_in_db FROM maps GROUP BY match_id) AS T1
+    ON T1.match_id = matches.match_id
+  WHERE matches.maps_played > T1.maps_in_db
+    `)
+  var concurDL = 0
+  var curImport = ''
+  var totalMissingMaps = 0
+  var auditMapImports = 0
+
+  await Promise.all(results.map(async (res) => {
+    totalMissingMaps += parseInt(res.maps_missing)
+  }))
+  console.log(`${results.length} matches with ${totalMissingMaps} missing maps.`)
+  // asyncForEach(results, async (res) => {
+  await Promise.all(results.map(async (res) => {
+    do {
+      // Snoozes function without pausing event loop
+      if (concurDL >= 2) {
+        // console.log(`Demo download halted. (${matchStats.id}|${match.id}) ${concurDL} DL's already occurring.`)
+      }
+      await snooze(1000)
+    }
+    while (concurDL >= 2)
+    concurDL += 1
+
+    try {
+      var matchContent = await downloadMatch(res.data, 'auditDB')
+      var matchDate = moment(res.data.date).format('YYYY-MM-DD h:mm ZZ')
+    } catch (err) {
+      console.log(`Error downloading? |${res.data.id}`)
+      console.log(err)
+      if (matchContent === undefined) {
+        console.log()
+        problemImports.push({ match: match, matchMapStats: matchStats })
+        return null
+      }
+    } finally {
+      concurDL -= 1
+    }
+
+    await asyncForEach(matchContent.demos, async (demo) => {
+      var importMatchMapStats
+      var importMatchMapStatsID
+      var missingMapStats = res.data.maps.filter(map =>
+        (Boolean(demo.match(MapDict[map.name])) && map.statsId !== undefined))
+
+      if (missingMapStats.length === 1) {
+        missingMapStats = missingMapStats[0]
+        importMatchMapStatsID = missingMapStats.statsId
+        var mapsInDb = await checkDbForMap(importMatchMapStatsID)
+        if (mapsInDb.length === 1) {
+          return // Already imported this map, ignore it
+        } else {
+          importMatchMapStats = await getMatchMapStats(importMatchMapStatsID)
+        }
+      } else {
+        console.log(`Orphan fetching error. |${match.id}|${matchDate}`)
+        console.log(match.maps)
+        console.log(missingMapStats)
+        console.log(demo)
+        return null // Skip importing this demo
+      }
+
+      do {
+        // Snoozes function without pausing event loop
+        if (curImport !== '') {
+          // console.log(`Demos import (${importMatchMapStatsID}|${match.id} waiting. . . curImport = ${curImport}`)
+        }
+        await snooze(1000)
+      }
+      while (curImport !== '')
+
+      curImport = importMatchMapStatsID + '|' + res.data.id
+      var demoImportSuccess = await importDemo(matchContent.outDir + demo, importMatchMapStats, importMatchMapStatsID, res.data)
+      curImport = ''
+      auditMapImports += demoImportSuccess
+      if (demoImportSuccess === false) {
+        // TODO(jcm): make table for this, chance to try out sequelize only row inserts?
+        console.log(`Error importing demo ${importMatchMapStatsID}|${match.id}`)
+        // problemImports.push({ match: res.data, matchMapStats: importMatchMapStats })
+      }
+      console.log(`${auditMapImports}/${totalMissingMaps} missing demos now in Maps table [${dateStr}].`)
+      // Remove .dem file (it's sitting in the .rar archive anyway), can optionally kill
+      exec(`rm ${matchContent.outDir + demo}`)
+    })
+    // Is the current matchMapStats appropriate for the demo?
+  }))
+}
+
+async function downloadMatch (match, matchMapStatsID, concurDL) {
+  var demoLink = match.demos.filter(demo => demo.name === 'GOTV Demo')[0].link
+  demoLink = apiConfig.hltvUrl + demoLink
+
+  var outDir = '/home/jcm/matches/' + match.id + '/'
+  var outPath = outDir + 'archive.rar'
+
+  if (!fs.existsSync(outDir)) {
+    fs.mkdirSync(outDir, { recursive: true })
+    // console.log("%d folder created.", match.id)
+  }
+
+  return new Promise((resolve, reject) => {
+    if (fs.existsSync(outDir + 'dlDone.txt')) { // If the archive is already downloaded.
+      console.log(`Download is complete. Locating extracted demos. ${matchMapStatsID}|${match.id}`)
+      fs.readdir(outDir, async (err, files) => {
+        if (err) {
+          console.log(`${matchMapStatsID}|${match.id} Error reading directory ${outDir}`)
+          console.log(err)
+        }
+
+        var demos = files.filter(f => f.substr(f.length - 3) === 'dem')
+        if (demos.length > 0) {
+          console.log(`Extracted demos found. ${matchMapStatsID}|${match.id} `)
+          resolve({
+            outDir: outDir,
+            demos: demos
+          })
+        } else {
+          // console.log(`Re-extracting demos ${matchMapStatsID}|${match.id}`)
+          demos = await extractArchive(outPath, outDir, match.id)
+          resolve({
+            outDir: outDir,
+            demos: demos
+          })
+        }
+      })
+    } else { // If archive is not done downloading
+      var out = fs.createWriteStream(outPath, { flags: 'w' }) // Overwrites incomplete archives
+        .on('error', (e) => {
+        })
+        .on('ready', () => {
+          console.log(`Starting download. . . ${matchMapStatsID}|${match.id} {${concurDL} DL's now}`)
+
+          new FetchStream(demoLink)
+            .pipe(out)
+            .on('error', (err) => {
+              console.log(`File download error. Removing incomplete archive. ${matchMapStatsID}|${match.id}`)
+              console.log(err)
+              fs.unlink(outPath, (err) => {
+                console.log(`Error deleting incomplete archive download. ${matchMapStatsID}|${match.id}`)
+                console.log(err)
+              })
+            }) // Could get 503 (others too possib.) log those for checking later?
+            .on('finish', async () => {
+              var demos = await extractArchive(outPath, outDir, match.id)
+              // Make quick flag file to show that it's complete
+              fs.writeFile(outDir + 'dlDone.txt', `Downloaded ${moment().format('YYYY-MM-DD h:mm ZZ')}`, function (err) {
+                if (err) throw err
+                console.log(`Archive downloaded ${matchMapStatsID}|${match.id} {${concurDL} DL's now}`)
+              })
+              resolve({
+                outDir: outDir,
+                demos: demos || undefined
+              })
+            })
+        })
+    }
+  })
+}
+
 // TODO(jcm): Add an auditDB function to attempt re-downloads of matches with
 // fewer maps in the db then available demos.
 
@@ -190,6 +370,6 @@ module.exports = {
   snooze,
   checkDbForMap,
   checkDbForMatch,
-  clearMatches
+  clearMatches,
+  auditDB
 }
-// extractArchive(tarchPath)

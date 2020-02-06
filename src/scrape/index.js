@@ -1,13 +1,17 @@
-const fs = require('fs')
 var Promise = require('bluebird')
-const apiConfig = require('hltv').default.config
-const FetchStream = require('fetch').FetchStream
 const MapDict = require('./maps.json')
-const { extractArchive } = require('./utils.js')
 const { importDemo, importMatch } = require('./import.js')
 const { exec } = require('child_process')
 var moment = require('moment')
-const { getMatchesStats, getMatchMapStats, getMatch, snooze, asyncForEach, checkDbForMap, checkDbForMatch } = require('./utils.js')
+const { getMatchesStats,
+  getMatchMapStats,
+  getMatch,
+  downloadMatch,
+  snooze,
+  asyncForEach,
+  checkDbForMap,
+  checkDbForMatch,
+  auditDB} = require('./utils.js')
 
 require('console-stamp')(console, 'mmm/dd/yyyy | HH:MM.l')
 
@@ -88,7 +92,7 @@ async function downloadDay (dateStr) {
     concurDL += 1
 
     try {
-      var matchContent = await downloadMatch(match, matchMapStats, matchStats.id, matchStats)
+      var matchContent = await downloadMatch(match, matchStats.id, concurDL)
       var matchDate = moment(match.date).format('YYYY-MM-DD h:mm ZZ')
     } catch (err) {
       console.log(`Error downloading? ${matchStats.id}|${match.id}`)
@@ -98,6 +102,8 @@ async function downloadDay (dateStr) {
         problemImports.push({ match: match, matchMapStats: matchStats })
         return null
       }
+    } finally {
+      concurDL -= 1
     }
     // matchContent.demos.forEach(async (demo) => {
     await asyncForEach(matchContent.demos, async (demo) => {
@@ -112,7 +118,7 @@ async function downloadDay (dateStr) {
         var matchingOrphans = orphanMapStats.filter(ms => {
           var mmsIdInMatch = match.maps.filter(map => map.statsId === ms.MapStatsID).length === 1
           var sameMatch = ms.matchPageID === match.id
-          var sameMap = Boolean(demo.match(MapDict[ms.map])[0])
+          var sameMap = Boolean(demo.match(MapDict[ms.map]))
           return (sameMap && (mmsIdInMatch || sameMatch))
         })
         if (matchingOrphans.length >= 1) {
@@ -132,7 +138,7 @@ async function downloadDay (dateStr) {
           // console.log(demo)
           // console.log(orphanMapStats)
           var missingMapStats = match.maps.filter(map =>
-            (Boolean(demo.match(MapDict[map.name])[0]) && map.statsId !== undefined))
+            (Boolean(demo.match(MapDict[map.name])) && map.statsId !== undefined))
           if (missingMapStats.length === 1) {
             missingMapStats = missingMapStats[0]
             importMatchMapStatsID = missingMapStats.statsId
@@ -152,7 +158,7 @@ async function downloadDay (dateStr) {
       do {
         // Snoozes function without pausing event loop
         if (curImport !== '') {
-          console.log(`Demos import (${importMatchMapStatsID}|${match.id} waiting. . . curImport = ${curImport}`)
+          // console.log(`Demos import (${importMatchMapStatsID}|${match.id} waiting. . . curImport = ${curImport}`)
         }
         await snooze(1000)
       }
@@ -201,81 +207,6 @@ async function downloadDay (dateStr) {
   // }
 }
 
-async function downloadMatch (match, matchMapStats, matchMapStatsID, matchStats) {
-  // concurDL += 1
-  var demoLink = match.demos.filter(demo => demo.name === 'GOTV Demo')[0].link
-  demoLink = apiConfig.hltvUrl + demoLink
-
-  var outDir = '/home/jcm/matches/' + match.id + '/'
-  var outPath = outDir + 'archive.rar'
-
-  if (!fs.existsSync(outDir)) {
-    fs.mkdirSync(outDir, { recursive: true })
-    // console.log("%d folder created.", match.id)
-  }
-
-  return new Promise((resolve, reject) => {
-    if (fs.existsSync(outDir + 'dlDone.txt')) { // If the archive is already downloaded.
-      console.log(`A previous download is complete. Attempting to locate extracted demos. ${matchStats.id}|${match.id}`)
-      fs.readdir(outDir, async (err, files) => {
-        if (err) {
-          console.log(`${matchStats.id}|${match.id} Error reading directory ${outDir}`)
-          console.log(err)
-        }
-
-        var demos = files.filter(f => f.substr(f.length - 3) === 'dem')
-        if (demos.length > 0) {
-          console.log(`Extracted demos found. ${matchStats.id}|${match.id} `)
-          concurDL -= 1
-          resolve({
-            outDir: outDir,
-            demos: demos
-          })
-        } else {
-          // console.log(`Re-extracting demos ${matchStats.id}|${match.id}`)
-          demos = await extractArchive(outPath, outDir, match.id)
-          concurDL -= 1
-          resolve({
-            outDir: outDir,
-            demos: demos
-          })
-        }
-      })
-    } else { // If archive is not done downloading
-      var out = fs.createWriteStream(outPath, { flags: 'w' }) // Overwrites incomplete archives
-        .on('error', (e) => {
-        })
-        .on('ready', () => {
-          console.log(`Starting download. . . ${matchMapStatsID}|${match.id} {${concurDL} DL's now}`)
-
-          new FetchStream(demoLink)
-            .pipe(out)
-            .on('error', (err) => {
-              concurDL -= 1
-              console.log(`File download error. Removing incomplete archive. ${matchMapStatsID}|${match.id}`)
-              console.log(err)
-              fs.unlink(outPath, (err) => {
-                console.log(`Error deleting incomplete archive download. ${matchMapStatsID}|${match.id}`)
-                console.log(err)
-              })
-            }) // Could get 503 (others too possib.) log those for checking later?
-            .on('finish', async () => {
-              var demos = await extractArchive(outPath, outDir, match.id)
-              // Make quick flag file to show that it's complete
-              fs.writeFile(outDir + 'dlDone.txt', `Downloaded ${moment().format('YYYY-MM-DD h:mm ZZ')}`, function (err) {
-                if (err) throw err
-                console.log(`Archive downloaded ${matchMapStatsID}|${match.id} {${concurDL} DL's now}`)
-              })
-              concurDL -= 1
-              resolve({
-                outDir: outDir,
-                demos: demos || undefined
-              })
-            })
-        })
-    }
-  })
-}
 
 // Rudimentary function to download a lot of days
 async function downloadDays (startDateStr, endDateStr) {
@@ -294,8 +225,5 @@ async function downloadDays (startDateStr, endDateStr) {
 // downloadDays('2019-10-31', '2019-11-21')
 // downloadDays('2019-10-31', '2019-11-30')
 
-try {
-  downloadDays('2019-09-01', '2019-12-31')
-} catch (err) {
-  console.log(err)
-}
+// downloadDays('2019-09-01', '2019-12-31')
+auditDB()

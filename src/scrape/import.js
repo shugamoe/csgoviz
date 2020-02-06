@@ -248,7 +248,8 @@ function importDemoBuffer (client, buffer, matchMapStatsID, callback) {
       assert(entities[key] === undefined, 'entity multiply defined for event')
 
       if (index === undefined) {
-        console.log('unknown entity index for key:', key, 'on', e.name)
+        // console.log('unknown entity index for key:', key, 'on', e.name)
+        console.log(`unknown entity index for key:${key} on ${e.name} ${matchMapStatsID}|`)
         return
       }
 
