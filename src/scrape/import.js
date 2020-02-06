@@ -411,7 +411,6 @@ function importDemoFile (path, matchMapStats, matchMapStatsID, match) {
         console.log(`Imported to Map table. ${matchMapStatsID}|${match.id}|${matchDate}`)
         return true
       }
-      // pg.end();
     })
 }
 

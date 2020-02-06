@@ -152,7 +152,7 @@ async function downloadDay (dateStr) {
       do {
         // Snoozes function without pausing event loop
         if (curImport !== '') {
-          // console.log(`Demos import (${importMatchMapStatsID}|${match.id} waiting. . . curImport = ${curImport}`)
+          console.log(`Demos import (${importMatchMapStatsID}|${match.id} waiting. . . curImport = ${curImport}`)
         }
         await snooze(1000)
       }

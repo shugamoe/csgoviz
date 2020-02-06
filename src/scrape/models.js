@@ -103,6 +103,9 @@ var Maptable = db.define('map', {
 }, {
   indexes: [
     {
+      fields: ['match_id']
+    },
+    {
       fields: ['data'],
       using: 'gin',
       operator: 'jsonb_ops'
