@@ -1,21 +1,22 @@
 var forever = require('forever-monitor')
+require('console-stamp')(console, 'mmm/dd/yyyy | HH:MM.l')
 
 var child = new (forever.Monitor)('./index.js', {
-  max: 3,
+  max: 10,
   silent: false,
   args: []
 })
 
 child.on('exit', function () {
-  console.log('Exited after 3 restarts')
+  console.log('Exited after this.options restarts')
 })
 
 child.on('restart', function () {
-  console.error('Forever restarting script for ' + child.times + ' time')
+  console.log('Forever restarting script for ' + child.times + ' time')
 })
 
 child.on('exit:code', function (code) {
-  console.error('Forever detected script exited with code ' + code)
+  console.log('Forever detected script exited with code ' + code)
 })
 
 // child.on('stdout', function(thing) {

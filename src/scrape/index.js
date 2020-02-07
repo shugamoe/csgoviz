@@ -3,7 +3,8 @@ const MapDict = require('./maps.json')
 const { importDemo, importMatch } = require('./import.js')
 const { exec } = require('child_process')
 var moment = require('moment')
-const { getMatchesStats,
+const {
+  getMatchesStats,
   getMatchMapStats,
   getMatch,
   downloadMatch,
@@ -11,16 +12,21 @@ const { getMatchesStats,
   asyncForEach,
   checkDbForMap,
   checkDbForMatch,
-  auditDB} = require('./utils.js')
+  auditDB
+} = require('./utils.js')
 
 require('console-stamp')(console, 'mmm/dd/yyyy | HH:MM.l')
 
-var orphanMapStats = []
-var problemImports = []
-var concurDL = 0 // TODO(jcm): Change to array to track mms/match ids.
-var curImport = ''
-
-async function downloadDay (dateStr) {
+async function downloadDay (dateStr, options) {
+  if (options === undefined) {
+    options = {}
+    options.maxImports = 1
+    options.maxDLs = 2
+  }
+  var orphanMapStats = []
+  var problemImports = []
+  var concurDL = 0 // TODO(jcm): Change to array to track mms/match ids.
+  var curImport = 0
   // TODO(jcm): Have restart functionality in case the catch blocks are
   // encountered (happens after a while? Use basic recursive fn or something)
   var matchesStats = await getMatchesStats(dateStr, dateStr)
@@ -56,17 +62,19 @@ async function downloadDay (dateStr) {
     if ((dbHasMatch.length === 0)) {
       do {
         // Snoozes function without pausing event loop
-        if (curImport !== '') {
+        // if (curImport !== '') {
+        if (curImport >= options.maxImports) {
           // console.log(`Match import (${matchStats.id}|${match.id} waiting. . . curImport = ${curImport}`)
         }
         await snooze(1000)
         // console.log(`Import for ${matchArr[i].id}-${matchContent.demos[d]} waiting. . . curImport = ${curImport}`)
       }
-      while (curImport !== '')
+      // while (curImport !== '')
+      while (curImport >= options.maxImports)
 
-      curImport = match.id
+      curImport += 1
       var matchImported = await importMatch(match, matchStats)
-      curImport = ''
+      curImport -= 1
     }
 
     if ((dbHasMatch.length === 1) || (!matchImported)) {
@@ -83,7 +91,7 @@ async function downloadDay (dateStr) {
     // Import the match data into SQL database, in case something goes wrong with the download or the import.
     do {
       // Snoozes function without pausing event loop
-      if (concurDL >= 2) {
+      if (concurDL >= options.maxDLs) {
         // console.log(`Demo download halted. (${matchStats.id}|${match.id}) ${concurDL} DL's already occurring.`)
       }
       await snooze(1000)
@@ -157,18 +165,20 @@ async function downloadDay (dateStr) {
 
       do {
         // Snoozes function without pausing event loop
-        if (curImport !== '') {
+        // if (curImport !== '') {
+        if (curImport >= options.maxImports) {
           // console.log(`Demos import (${importMatchMapStatsID}|${match.id} waiting. . . curImport = ${curImport}`)
         }
         await snooze(1000)
       }
-      while (curImport !== '')
+      // while (curImport !== '')
+      while (curImport >= options.maxImports)
 
-      curImport = importMatchMapStatsID + '|' + match.id
+      curImport += 1
       var demoImportSuccess = await importDemo(matchContent.outDir + demo, importMatchMapStats, importMatchMapStatsID,
         match
       )
-      curImport = ''
+      curImport -= 1
       numMapImports += demoImportSuccess
       if (demoImportSuccess === false) {
         // TODO(jcm): make table for this, chance to try out sequelize only row inserts?
@@ -207,7 +217,6 @@ async function downloadDay (dateStr) {
   // }
 }
 
-
 // Rudimentary function to download a lot of days
 async function downloadDays (startDateStr, endDateStr) {
   var startDate = moment(startDateStr)
@@ -226,4 +235,4 @@ async function downloadDays (startDateStr, endDateStr) {
 // downloadDays('2019-10-31', '2019-11-30')
 
 // downloadDays('2019-09-01', '2019-12-31')
-auditDB()
+auditDB().then(res => downloadDays('2019-09-01', '2019-12-31'))

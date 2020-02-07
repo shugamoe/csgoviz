@@ -192,16 +192,25 @@ async function clearMatches () {
   })
 }
 
-async function auditDB () {
+async function auditDB (options) {
+  if (options === undefined) {
+    options = {}
+    options.maxImports = 1
+    options.maxDLs = 2
+  }
   const [results, _] = await db.query(`
-  SELECT matches.match_id, matches.data, matches.maps_played - T1.maps_in_db AS maps_missing
-  FROM matches 
-    INNER JOIN (SELECT match_id, COUNT(*) AS maps_in_db FROM maps GROUP BY match_id) AS T1
-    ON T1.match_id = matches.match_id
-  WHERE matches.maps_played > T1.maps_in_db
+    SELECT matches.match_id, matches.data, matches.maps_played - COALESCE(T1.maps_in_db, 0) AS maps_missing
+    FROM matches 
+      LEFT OUTER JOIN (SELECT match_id, COUNT(*) AS maps_in_db 
+                  FROM maps 
+                  GROUP BY match_id) AS T1
+      ON T1.match_id = matches.match_id
+    WHERE matches.maps_played > T1.maps_in_db
+    OR matches.maps_played - T1.maps_in_db IS NULL
     `)
   var concurDL = 0
-  var curImport = ''
+  // var curImport = ''
+  var curImport = 0
   var totalMissingMaps = 0
   var auditMapImports = 0
 
@@ -213,12 +222,12 @@ async function auditDB () {
   await Promise.all(results.map(async (res) => {
     do {
       // Snoozes function without pausing event loop
-      if (concurDL >= 2) {
+      if (concurDL >= options.maxDLs) {
         // console.log(`Demo download halted. (${matchStats.id}|${match.id}) ${concurDL} DL's already occurring.`)
       }
       await snooze(1000)
     }
-    while (concurDL >= 2)
+    while (concurDL >= options.maxDLs)
     concurDL += 1
 
     try {
@@ -228,8 +237,7 @@ async function auditDB () {
       console.log(`Error downloading? |${res.data.id}`)
       console.log(err)
       if (matchContent === undefined) {
-        console.log()
-        problemImports.push({ match: match, matchMapStats: matchStats })
+        // problemImports.push({ match: match, matchMapStats: matchStats })
         return null
       }
     } finally {
@@ -252,8 +260,8 @@ async function auditDB () {
           importMatchMapStats = await getMatchMapStats(importMatchMapStatsID)
         }
       } else {
-        console.log(`Orphan fetching error. |${match.id}|${matchDate}`)
-        console.log(match.maps)
+        console.log(`Orphan fetching error. |${res.data.id}|${matchDate}`)
+        console.log(res.data.maps)
         console.log(missingMapStats)
         console.log(demo)
         return null // Skip importing this demo
@@ -261,23 +269,27 @@ async function auditDB () {
 
       do {
         // Snoozes function without pausing event loop
-        if (curImport !== '') {
+        // if (curImport !== '') {
+        if (curImport >= options.maxImports) {
           // console.log(`Demos import (${importMatchMapStatsID}|${match.id} waiting. . . curImport = ${curImport}`)
         }
         await snooze(1000)
       }
-      while (curImport !== '')
+      // while (curImport !== '')
+      while (curImport >= options.maxImports)
 
-      curImport = importMatchMapStatsID + '|' + res.data.id
+      // curImport = importMatchMapStatsID + '|' + res.data.id
+      curImport += 1
       var demoImportSuccess = await importDemo(matchContent.outDir + demo, importMatchMapStats, importMatchMapStatsID, res.data)
-      curImport = ''
+      // curImport = ''
+      curImport -= 1
       auditMapImports += demoImportSuccess
       if (demoImportSuccess === false) {
         // TODO(jcm): make table for this, chance to try out sequelize only row inserts?
-        console.log(`Error importing demo ${importMatchMapStatsID}|${match.id}`)
+        console.log(`Error importing demo ${importMatchMapStatsID}|${res.data.id}`)
         // problemImports.push({ match: res.data, matchMapStats: importMatchMapStats })
       }
-      console.log(`${auditMapImports}/${totalMissingMaps} missing demos now in Maps table [${dateStr}].`)
+      console.log(`${auditMapImports}/${totalMissingMaps} missing demos now in Maps table.`)
       // Remove .dem file (it's sitting in the .rar archive anyway), can optionally kill
       exec(`rm ${matchContent.outDir + demo}`)
     })
@@ -355,9 +367,6 @@ async function downloadMatch (match, matchMapStatsID, concurDL) {
     }
   })
 }
-
-// TODO(jcm): Add an auditDB function to attempt re-downloads of matches with
-// fewer maps in the db then available demos.
 
 module.exports = {
   extractArchive,
