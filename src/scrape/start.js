@@ -2,8 +2,9 @@ var forever = require('forever-monitor')
 require('console-stamp')(console, 'mmm/dd/yyyy | HH:MM.l')
 
 var child = new (forever.Monitor)('./index.js', {
-  max: 10,
+  max: 40,
   silent: false,
+  // logFile: "./logs/",
   args: []
 })
 

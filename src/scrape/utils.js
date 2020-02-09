@@ -96,6 +96,15 @@ async function getMatchMapStats (matchStats, numRetries) {
 }
 
 async function getMatch (matchStats, matchId, numRetries) {
+  var mapDate
+  if (typeof (matchStats) === 'number') {
+    matchStats = {
+      id: matchStats
+    }
+    mapDate = '[Date N/A]'
+  } else {
+    mapDate = moment(matchStats.date).format('YYYY-MM-DD h:mm:ss ZZ')
+  }
   if (numRetries === undefined) {
     numRetries = 1
   }
@@ -193,11 +202,20 @@ async function clearMatches () {
 }
 
 async function auditDB (options) {
+  var concurDL = 0
+  // var curImport = ''
+  var curImport = 0
+  var totalMissingMaps = 0
+  var auditMapImports = 0
+
   if (options === undefined) {
-    options = {}
-    options.maxImports = 1
-    options.maxDLs = 2
+    options = {
+      maxImports: 1,
+      maxDLs: 2
+    }
   }
+  // Find matches that are missing maps. matches.maps_played is the number of
+  // maps we expect with a given match_id
   const [results, _] = await db.query(`
     SELECT matches.match_id, matches.data, matches.maps_played - COALESCE(T1.maps_in_db, 0) AS maps_missing
     FROM matches 
@@ -208,18 +226,17 @@ async function auditDB (options) {
     WHERE matches.maps_played > T1.maps_in_db
     OR matches.maps_played - T1.maps_in_db IS NULL
     `)
-  var concurDL = 0
-  // var curImport = ''
-  var curImport = 0
-  var totalMissingMaps = 0
-  var auditMapImports = 0
 
   await Promise.all(results.map(async (res) => {
     totalMissingMaps += parseInt(res.maps_missing)
   }))
   console.log(`${results.length} matches with ${totalMissingMaps} missing maps.`)
   // asyncForEach(results, async (res) => {
-  await Promise.all(results.map(async (res) => {
+  await Promise.all(results.map(async (res, index) => {
+    if (index > 15) {
+      return 'skipped'
+    }
+
     do {
       // Snoozes function without pausing event loop
       if (concurDL >= options.maxDLs) {
@@ -234,7 +251,7 @@ async function auditDB (options) {
       var matchContent = await downloadMatch(res.data, 'auditDB')
       var matchDate = moment(res.data.date).format('YYYY-MM-DD h:mm ZZ')
     } catch (err) {
-      console.log(`Error downloading? |${res.data.id}`)
+      console.log(`Error downloading matches? |${res.data.id}`)
       console.log(err)
       if (matchContent === undefined) {
         // problemImports.push({ match: match, matchMapStats: matchStats })
@@ -339,7 +356,7 @@ async function downloadMatch (match, matchMapStatsID, concurDL) {
         .on('error', (e) => {
         })
         .on('ready', () => {
-          console.log(`Starting download. . . ${matchMapStatsID}|${match.id} {${concurDL} DL's now}`)
+          console.log(`Starting download. . . ${matchMapStatsID}|${match.id}`)
 
           new FetchStream(demoLink)
             .pipe(out)
@@ -356,7 +373,7 @@ async function downloadMatch (match, matchMapStatsID, concurDL) {
               // Make quick flag file to show that it's complete
               fs.writeFile(outDir + 'dlDone.txt', `Downloaded ${moment().format('YYYY-MM-DD h:mm ZZ')}`, function (err) {
                 if (err) throw err
-                console.log(`Archive downloaded ${matchMapStatsID}|${match.id} {${concurDL} DL's now}`)
+                console.log(`Archive downloaded ${matchMapStatsID}|${match.id}`)
               })
               resolve({
                 outDir: outDir,
@@ -380,5 +397,6 @@ module.exports = {
   checkDbForMap,
   checkDbForMatch,
   clearMatches,
+  downloadMatch,
   auditDB
 }
