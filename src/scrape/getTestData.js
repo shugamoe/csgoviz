@@ -51,7 +51,7 @@ function gettestData () {
     })
 }
 
-gettestData()
-var test_getMatchesStats = JSON.parse(fs.readFileSync('./test/getMatchesStats.txt', 'utf8'))
-var test_getMatchMapStats = JSON.parse(fs.readFileSync('./test/getMatchMapStats.txt', 'utf8'))
-var test_getMatch = JSON.parse(fs.readFileSync('./test/getMatch.txt'))
+// gettestData()
+var test_getMatchesStats = JSON.parse(fs.readFileSync('./test/test_getMatchesStats.txt', 'utf8'))
+var test_getMatchMapStats = JSON.parse(fs.readFileSync('./test/test_getMatchMapStats.txt', 'utf8'))
+var test_getMatch = JSON.parse(fs.readFileSync('./test/test_getMatch.txt'))

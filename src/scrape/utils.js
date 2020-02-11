@@ -225,6 +225,7 @@ async function auditDB (options) {
       ON T1.match_id = matches.match_id
     WHERE matches.maps_played > T1.maps_in_db
     OR matches.maps_played - T1.maps_in_db IS NULL
+    ORDER BY matches.date DESC
     `)
 
   await Promise.all(results.map(async (res) => {
