@@ -45,8 +45,9 @@ function importDemoBuffer (client, buffer, matchMapStatsID, callback) {
 
   var eventStream = client.query(copyFrom("COPY events (map_mms_id, tick, name, data, locations, entities) FROM STDIN WITH NULL 'null'"))
 
-  var tempDeferredFilename = 'deferred_' + Math.random() + '.tmp'
-  var entityPropStream = fs.createWriteStream(tempDeferredFilename)
+  var tempDeferredFilename = 'tmp/deferred_' + Math.random() + '.tmp'
+  // var entityPropStream = fs.createWriteStream(tempDeferredFilename)
+  var entityPropStream = client.query(copyFrom("COPY entity_props (map_mms_id, index, tick, prop, value) FROM STDIN WITH NULL 'null'"))
 
   /**
    * Find the entity index of a user ID
@@ -103,6 +104,7 @@ function importDemoBuffer (client, buffer, matchMapStatsID, callback) {
   }
 
   demo.on('start', () => {
+    console.time('demo.parse')
     // console.log('Parsed header:');
     // console.log(demo.header);
 
@@ -129,25 +131,26 @@ function importDemoBuffer (client, buffer, matchMapStatsID, callback) {
       Promise.promisify(eventStream.end, { context: eventStream })(),
       Promise.promisify(entityPropStream.end, { context: entityPropStream })()
     ])
-      .then(() => {
-        // console.log('Copying entity property data to database...')
-
-        return Promise.promisify(done => {
-          var stream = client.query(copyFrom("COPY entity_props (map_mms_id, index, tick, prop, value) FROM STDIN WITH NULL 'null'"))
-          var fileStream = fs.createReadStream(tempDeferredFilename)
-
-          fileStream.on('error', done)
-
-          fileStream.pipe(stream)
-            .on('finish', () => {
-              // console.log(`Copied entity_props. ${matchMapStatsID}|`);
-              fs.unlink(tempDeferredFilename, done)
-            })
-            .on('error', done)
-        })()
-      })
+      // .then(() => {
+    // console.log('Copying entity property data to database...')
+    //
+    // return Promise.promisify(done => {
+    // var stream = client.query(copyFrom("COPY entity_props (map_mms_id, index, tick, prop, value) FROM STDIN WITH NULL 'null'"))
+    // var fileStream = fs.createReadStream(tempDeferredFilename)
+    //
+    // fileStream.on('error', done)
+    //
+    // fileStream.pipe(stream)
+    // .on('finish', () => {
+    // console.log(`Copied entity_props. ${matchMapStatsID}|`)
+    // fs.unlink(tempDeferredFilename, done)
+    // })
+    // .on('error', done)
+    // })()
+      // })
       .then(() => {
         // console.log(`All streams closed. ${matchMapStatsID}|`);
+        console.timeEnd('demo.parse')
         callback(null)
       })
       .catch(callback)
@@ -327,7 +330,7 @@ function importDemoFile (path, matchMapStats, matchMapStatsID, match) {
   var commitFail
   // console.log('Connecting to database...');
   var matchDate = moment(match.date).format('YYYY-MM-DD h:mm ZZ')
-  console.log(`Starting import to Map table. ${matchMapStatsID}|${matchMapStats.matchPageID}|${matchDate}`)
+  console.log(`\tStarting import to Map table. ${matchMapStatsID}|${matchMapStats.matchPageID}|${matchDate}`)
   var client = new pg.Client(dbCon.connectionString)
 
   var query = Promise.promisify(client.query, { context: client })
@@ -409,7 +412,7 @@ function importDemoFile (path, matchMapStats, matchMapStatsID, match) {
         console.log(`Map table import fail. ${matchMapStatsID}|${match.id}|${matchDate}`)
         return false
       } else {
-        console.log(`Imported to Map table. ${matchMapStatsID}|${match.id}|${matchDate}`)
+        console.log(`\tImported to Map table. ${matchMapStatsID}|${match.id}|${matchDate}`)
         return true
       }
     })
@@ -481,11 +484,15 @@ function importMatchWrap (match, matchStats) {
 
 async function importDemoWithMeta (path, matchMapStats, matchMapStatsID, match) {
   return new Promise((resolve, reject) => {
-    db.sync(syncOpts)
-      .then(() => {
-        importDemoFile(path, matchMapStats, matchMapStatsID, match).then(res => resolve(res))
-          .catch(e => reject(e))
-      })
+    if (matchMapStatsID === 92587) { // TODO(jcm): identify invalid input json syntax here. pull request saul/demofile if warranted.
+      resolve(false)
+    } else {
+      db.sync(syncOpts)
+        .then(() => {
+          importDemoFile(path, matchMapStats, matchMapStatsID, match).then(res => resolve(res))
+            .catch(e => reject(e))
+        })
+    }
   })
 }
 

@@ -235,4 +235,4 @@ async function downloadDays (startDateStr, endDateStr) {
 // downloadDays('2019-10-31', '2019-11-30')
 
 // downloadDays('2019-09-01', '2019-12-31')
-auditDB()//.then(res => downloadDays('2019-09-01', '2019-12-31'))
+auditDB()// .then(res => downloadDays('2019-09-01', '2019-12-31'))
