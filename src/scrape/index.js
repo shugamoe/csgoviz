@@ -235,4 +235,9 @@ async function downloadDays (startDateStr, endDateStr) {
 // downloadDays('2019-10-31', '2019-11-30')
 
 // downloadDays('2019-09-01', '2019-12-31')
-auditDB()// .then(res => downloadDays('2019-09-01', '2019-12-31'))
+var today = moment(moment.now()).format('YYYY-MM-DD')
+// 6 months ago
+var lookback = 6 // months
+var start = moment(moment.now()).add(-6, 'M').format('YYYY-MM-DD')
+
+auditDB()// .then(res => downloadDays('2019-09-01', today.format('YYYY-MM-DD')))

@@ -221,9 +221,9 @@ async function auditDB (options) {
     SELECT matches.match_id, matches.data, matches.maps_played - COALESCE(T1.maps_in_db, 0) AS maps_missing
     FROM matches 
       LEFT OUTER JOIN (SELECT match_id, COUNT(*) AS maps_in_db 
-                  FROM maps 
-                  GROUP BY match_id) AS T1
-      ON T1.match_id = matches.match_id
+                       FROM maps 
+                       GROUP BY match_id) AS T1
+        ON T1.match_id = matches.match_id
     WHERE matches.maps_played > T1.maps_in_db
     OR matches.maps_played - T1.maps_in_db IS NULL
     ORDER BY matches.date DESC
