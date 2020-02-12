@@ -1,3 +1,4 @@
+const homeDir = require('os').homedir()
 const fs = require('fs')
 const { exec } = require('child_process')
 const { unrar, list } = require('unrar-promise')
@@ -319,7 +320,7 @@ async function downloadMatch (match, matchMapStatsID, concurDL) {
   var demoLink = match.demos.filter(demo => demo.name === 'GOTV Demo')[0].link
   demoLink = apiConfig.hltvUrl + demoLink
 
-  var outDir = '/home/jcm/matches/' + match.id + '/'
+  var outDir = homeDir + '/matches/' + match.id + '/'
   var outPath = outDir + 'archive.rar'
 
   if (!fs.existsSync(outDir)) {
