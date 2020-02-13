@@ -239,5 +239,6 @@ var today = moment(moment.now()).format('YYYY-MM-DD')
 // 6 months ago
 var lookback = 6 // months
 var start = moment(moment.now()).add(-6, 'M').format('YYYY-MM-DD')
+// TODO(jcm): Maybe something to archive older data?
 
 auditDB()// .then(res => downloadDays('2019-09-01', today.format('YYYY-MM-DD')))
