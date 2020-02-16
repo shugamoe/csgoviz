@@ -371,12 +371,12 @@ async function downloadMatch (match, matchMapStatsID, concurDL) {
               })
             }) // Could get 503 (others too possib.) log those for checking later?
             .on('finish', async () => {
-              var demos = await extractArchive(outPath, outDir, match.id)
               // Make quick flag file to show that it's complete
               fs.writeFile(outDir + 'dlDone.txt', `Downloaded ${moment().format('YYYY-MM-DD h:mm ZZ')}`, function (err) {
                 if (err) throw err
                 console.log(`Archive downloaded ${matchMapStatsID}|${match.id}`)
               })
+              var demos = await extractArchive(outPath, outDir, match.id)
               resolve({
                 outDir: outDir,
                 demos: demos || undefined

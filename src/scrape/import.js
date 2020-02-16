@@ -484,7 +484,7 @@ function importMatchWrap (match, matchStats) {
 
 async function importDemoWithMeta (path, matchMapStats, matchMapStatsID, match) {
   return new Promise((resolve, reject) => {
-    if (matchMapStatsID === 92587) { // TODO(jcm): identify invalid input json syntax here. pull request saul/demofile if warranted.
+    if ([92587, 92569, 92180, 92172].includes(matchMapStatsID)) { // TODO(jcm): identify invalid input json syntax here. pull request saul/demofile if warranted.
       resolve(false)
     } else {
       db.sync(syncOpts)
