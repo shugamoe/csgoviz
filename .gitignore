@@ -2,3 +2,4 @@
 node_modules/
 src/scrape/test
 
+packrat/lib*/
