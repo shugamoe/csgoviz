@@ -1,5 +1,5 @@
 ---
-title: "About"
+title: "CSGOtrica"
 output:
   workflowr::wflow_html:
     toc: false
