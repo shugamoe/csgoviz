@@ -11,7 +11,7 @@
 
 
 
-<title>CSGOtrica</title>
+<title>csgotrica</title>
 
 <script src="site_libs/jquery-1.11.3/jquery.min.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -301,14 +301,14 @@ div.section {
 
 
 
-<h1 class="title toc-ignore">CSGOtrica</h1>
+<h1 class="title toc-ignore">csgotrica</h1>
 
 </div>
 
 
 <p>
 <button type="button" class="btn btn-default btn-workflowr btn-workflowr-report" data-toggle="collapse" data-target="#workflowr-report">
-<span class="glyphicon glyphicon-list" aria-hidden="true"></span> workflowr <span class="glyphicon glyphicon-exclamation-sign text-danger" aria-hidden="true"></span>
+<span class="glyphicon glyphicon-list" aria-hidden="true"></span> workflowr <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span>
 </button>
 </p>
 <div id="workflowr-report" class="collapse">
@@ -317,7 +317,7 @@ div.section {
 <a data-toggle="tab" href="#summary">Summary</a>
 </li>
 <li>
-<a data-toggle="tab" href="#checks"> Checks <span class="glyphicon glyphicon-exclamation-sign text-danger" aria-hidden="true"></span> </a>
+<a data-toggle="tab" href="#checks"> Checks <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> </a>
 </li>
 <li>
 <a data-toggle="tab" href="#versions">Past versions</a>
@@ -329,7 +329,7 @@ div.section {
 <strong>Last updated:</strong> 2020-02-19
 </p>
 <p>
-<strong>Checks:</strong> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> 1 <span class="glyphicon glyphicon-exclamation-sign text-danger" aria-hidden="true"></span> 1
+<strong>Checks:</strong> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> 2 <span class="glyphicon glyphicon-exclamation-sign text-danger" aria-hidden="true"></span> 0
 </p>
 <p>
 <strong>Knit directory:</strong> <code>csgotrica/</code> <span class="glyphicon glyphicon-question-sign" aria-hidden="true" title="This is the local directory in which the code in this file was executed."> </span>
@@ -345,44 +345,39 @@ This reproducible <a href="http://rmarkdown.rstudio.com">R Markdown</a> analysis
 <div class="panel panel-default">
 <div class="panel-heading">
 <p class="panel-title">
-<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRMarkdownfilestronguncommittedchanges"> <span class="glyphicon glyphicon-exclamation-sign text-danger" aria-hidden="true"></span> <strong>R Markdown file:</strong> uncommitted changes </a>
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRMarkdownfilestronguptodate"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>R Markdown file:</strong> up-to-date </a>
 </p>
 </div>
-<div id="strongRMarkdownfilestronguncommittedchanges" class="panel-collapse collapse">
+<div id="strongRMarkdownfilestronguptodate" class="panel-collapse collapse">
 <div class="panel-body">
-<p>The R Markdown file has unstaged changes. To know which version of the R Markdown file created these results, you’ll want to first commit it to the Git repo. If you’re still working on the analysis, you can ignore this warning. When you’re finished, you can run <code>wflow_publish</code> to commit the R Markdown file and build the HTML.</p>
+<p>Great! Since the R Markdown file has been committed to the Git repository, you know the exact version of the code that produced these results.</p>
 </div>
 </div>
 </div>
 <div class="panel panel-default">
 <div class="panel-heading">
 <p class="panel-title">
-<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRepositoryversionstrongahrefhttpsgithubcomshugamoecsgoviztree246ef2aff14a27cb6c4a01ab222e54092ec23b22targetblank246ef2aa"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>Repository version:</strong> <a href="https://github.com/shugamoe/csgoviz/tree/246ef2aff14a27cb6c4a01ab222e54092ec23b22" target="_blank">246ef2a</a> </a>
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRepositoryversionstrongahrefhttpsgithubcomshugamoecsgoviztree4ea9d60ae970c8590cce6d60cd45aff8ed4de10ctargetblank4ea9d60a"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>Repository version:</strong> <a href="https://github.com/shugamoe/csgoviz/tree/4ea9d60ae970c8590cce6d60cd45aff8ed4de10c" target="_blank">4ea9d60</a> </a>
 </p>
 </div>
-<div id="strongRepositoryversionstrongahrefhttpsgithubcomshugamoecsgoviztree246ef2aff14a27cb6c4a01ab222e54092ec23b22targetblank246ef2aa" class="panel-collapse collapse">
+<div id="strongRepositoryversionstrongahrefhttpsgithubcomshugamoecsgoviztree4ea9d60ae970c8590cce6d60cd45aff8ed4de10ctargetblank4ea9d60a" class="panel-collapse collapse">
 <div class="panel-body">
 <p>
 Great! You are using Git for version control. Tracking code development and connecting the code version to the results is critical for reproducibility. The version displayed above was the version of the Git repository at the time these results were generated. <br><br> Note that you need to be careful to ensure that all relevant files for the analysis have been committed to Git prior to generating the results (you can use <code>wflow_publish</code> or <code>wflow_git_commit</code>). workflowr only checks the R Markdown file, but you know if there are other scripts or data files that it depends on. Below is the status of the Git repository when the results were generated:
 </p>
 <pre><code>
 Ignored files:
+    Ignored:    import/logs/
+    Ignored:    import/tmp/
     Ignored:    node_modules/
     Ignored:    packrat/lib-R/
     Ignored:    packrat/lib-ext/
     Ignored:    packrat/lib/
-    Ignored:    scrape/logs/
-    Ignored:    scrape/tmp/
 
 Untracked files:
     Untracked:  .eslintrc.json
-    Untracked:  packrat/init.R
+    Untracked:  import/test/
     Untracked:  packrat/src/
-    Untracked:  scrape/test/
-
-Unstaged changes:
-    Modified:   README.md
-    Modified:   analysis/about.Rmd
 
 </code></pre>
 <p>
@@ -426,6 +421,57 @@ Message
 Rmd
 </td>
 <td>
+<a href="https://github.com/shugamoe/csgoviz/blob/4ea9d60ae970c8590cce6d60cd45aff8ed4de10c/analysis/about.Rmd" target="_blank">4ea9d60</a>
+</td>
+<td>
+Julian McClellan
+</td>
+<td>
+2020-02-19
+</td>
+<td>
+missed this
+</td>
+</tr>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+<a href="https://github.com/shugamoe/csgoviz/blob/01e4bd5246e8fd7c4f67306aa65a6130722e1cf2/analysis/about.Rmd" target="_blank">01e4bd5</a>
+</td>
+<td>
+Julian McClellan
+</td>
+<td>
+2020-02-19
+</td>
+<td>
+Derp level site up
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+<a href="https://rawcdn.githack.com/shugamoe/csgoviz/01e4bd5246e8fd7c4f67306aa65a6130722e1cf2/docs/about.html" target="_blank">01e4bd5</a>
+</td>
+<td>
+Julian McClellan
+</td>
+<td>
+2020-02-19
+</td>
+<td>
+Derp level site up
+</td>
+</tr>
+<tr>
+<td>
+Rmd
+</td>
+<td>
 <a href="https://github.com/shugamoe/csgoviz/blob/2b6cace6fc6b534bf9a3f3bf77d04d106f4af98d/analysis/about.Rmd" target="_blank">2b6cace</a>
 </td>
 <td>
@@ -445,7 +491,7 @@ Start workflowr project.
 </div>
 </div>
 </div>
-<p>Describe your project.</p>
+<p>Creating reproducible CSGO research.</p>
 
 
 <!-- Adjust MathJax settings so that all math formulae are shown using
