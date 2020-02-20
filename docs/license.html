@@ -308,7 +308,7 @@ div.section {
 
 <p>
 <button type="button" class="btn btn-default btn-workflowr btn-workflowr-report" data-toggle="collapse" data-target="#workflowr-report">
-<span class="glyphicon glyphicon-list" aria-hidden="true"></span> workflowr <span class="glyphicon glyphicon-exclamation-sign text-danger" aria-hidden="true"></span>
+<span class="glyphicon glyphicon-list" aria-hidden="true"></span> workflowr <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span>
 </button>
 </p>
 <div id="workflowr-report" class="collapse">
@@ -317,7 +317,7 @@ div.section {
 <a data-toggle="tab" href="#summary">Summary</a>
 </li>
 <li>
-<a data-toggle="tab" href="#checks"> Checks <span class="glyphicon glyphicon-exclamation-sign text-danger" aria-hidden="true"></span> </a>
+<a data-toggle="tab" href="#checks"> Checks <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> </a>
 </li>
 <li>
 <a data-toggle="tab" href="#versions">Past versions</a>
@@ -329,7 +329,7 @@ div.section {
 <strong>Last updated:</strong> 2020-02-19
 </p>
 <p>
-<strong>Checks:</strong> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> 1 <span class="glyphicon glyphicon-exclamation-sign text-danger" aria-hidden="true"></span> 1
+<strong>Checks:</strong> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> 2 <span class="glyphicon glyphicon-exclamation-sign text-danger" aria-hidden="true"></span> 0
 </p>
 <p>
 <strong>Knit directory:</strong> <code>csgotrica/</code> <span class="glyphicon glyphicon-question-sign" aria-hidden="true" title="This is the local directory in which the code in this file was executed."> </span>
@@ -345,22 +345,22 @@ This reproducible <a href="http://rmarkdown.rstudio.com">R Markdown</a> analysis
 <div class="panel panel-default">
 <div class="panel-heading">
 <p class="panel-title">
-<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRMarkdownfilestronguncommittedchanges"> <span class="glyphicon glyphicon-exclamation-sign text-danger" aria-hidden="true"></span> <strong>R Markdown file:</strong> uncommitted changes </a>
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRMarkdownfilestronguptodate"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>R Markdown file:</strong> up-to-date </a>
 </p>
 </div>
-<div id="strongRMarkdownfilestronguncommittedchanges" class="panel-collapse collapse">
+<div id="strongRMarkdownfilestronguptodate" class="panel-collapse collapse">
 <div class="panel-body">
-<p>The R Markdown file has staged changes. To know which version of the R Markdown file created these results, you’ll want to first commit it to the Git repo. If you’re still working on the analysis, you can ignore this warning. When you’re finished, you can run <code>wflow_publish</code> to commit the R Markdown file and build the HTML.</p>
+<p>Great! Since the R Markdown file has been committed to the Git repository, you know the exact version of the code that produced these results.</p>
 </div>
 </div>
 </div>
 <div class="panel panel-default">
 <div class="panel-heading">
 <p class="panel-title">
-<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRepositoryversionstrongahrefhttpsgithubcomshugamoecsgoviztreeaa833dd9628687c76e6e8a1a4d654e696e40ffc1targetblankaa833dda"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>Repository version:</strong> <a href="https://github.com/shugamoe/csgoviz/tree/aa833dd9628687c76e6e8a1a4d654e696e40ffc1" target="_blank">aa833dd</a> </a>
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRepositoryversionstrongahrefhttpsgithubcomshugamoecsgoviztreead5eefe6124eec17df5cc4e37c40a5257c6ed143targetblankad5eefea"> <span class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> <strong>Repository version:</strong> <a href="https://github.com/shugamoe/csgoviz/tree/ad5eefe6124eec17df5cc4e37c40a5257c6ed143" target="_blank">ad5eefe</a> </a>
 </p>
 </div>
-<div id="strongRepositoryversionstrongahrefhttpsgithubcomshugamoecsgoviztreeaa833dd9628687c76e6e8a1a4d654e696e40ffc1targetblankaa833dda" class="panel-collapse collapse">
+<div id="strongRepositoryversionstrongahrefhttpsgithubcomshugamoecsgoviztreead5eefe6124eec17df5cc4e37c40a5257c6ed143targetblankad5eefea" class="panel-collapse collapse">
 <div class="panel-body">
 <p>
 Great! You are using Git for version control. Tracking code development and connecting the code version to the results is critical for reproducibility. The version displayed above was the version of the Git repository at the time these results were generated. <br><br> Note that you need to be careful to ensure that all relevant files for the analysis have been committed to Git prior to generating the results (you can use <code>wflow_publish</code> or <code>wflow_git_commit</code>). workflowr only checks the R Markdown file, but you know if there are other scripts or data files that it depends on. Below is the status of the Git repository when the results were generated:
@@ -379,8 +379,8 @@ Untracked files:
     Untracked:  import/test/
     Untracked:  packrat/src/
 
-Staged changes:
-    Modified:   analysis/license.Rmd
+Unstaged changes:
+    Modified:   analysis/about.Rmd
 
 </code></pre>
 <p>
@@ -419,6 +419,57 @@ Message
 </tr>
 </thead>
 <tbody>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+<a href="https://github.com/shugamoe/csgoviz/blob/ad5eefe6124eec17df5cc4e37c40a5257c6ed143/analysis/license.Rmd" target="_blank">ad5eefe</a>
+</td>
+<td>
+Julian McClellan
+</td>
+<td>
+2020-02-19
+</td>
+<td>
+Fill in &lt;&gt;
+</td>
+</tr>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+<a href="https://github.com/shugamoe/csgoviz/blob/bdcbcd3a3d58fe447755a4b9affd28f2fa7f53f5/analysis/license.Rmd" target="_blank">bdcbcd3</a>
+</td>
+<td>
+Julian McClellan
+</td>
+<td>
+2020-02-19
+</td>
+<td>
+GNU
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+<a href="https://rawcdn.githack.com/shugamoe/csgoviz/bdcbcd3a3d58fe447755a4b9affd28f2fa7f53f5/docs/license.html" target="_blank">bdcbcd3</a>
+</td>
+<td>
+Julian McClellan
+</td>
+<td>
+2020-02-19
+</td>
+<td>
+GNU
+</td>
+</tr>
 <tr>
 <td>
 html
@@ -613,8 +664,8 @@ Start workflowr project.
 <p>How to Apply These Terms to Your New Programs</p>
 <p>If you develop a new program, and you want it to be of the greatest possible use to the public, the best way to achieve this is to make it free software which everyone can redistribute and change under these terms.</p>
 <p>To do so, attach the following notices to the program. It is safest to attach them to the start of each source file to most effectively state the exclusion of warranty; and each file should have at least the “copyright” line and a pointer to where the full notice is found.</p>
-<pre><code>&lt;one line to give the program&#39;s name and a brief idea of what it does.&gt;
-Copyright (C) &lt;year&gt;  &lt;name of author&gt;
+<pre><code>csgotrica. Creating reproducible CSGO research.
+Copyright (C) 2020 Julian Chew McClellan
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -630,7 +681,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see &lt;https://www.gnu.org/licenses/&gt;.</code></pre>
 <p>Also add information on how to contact you by electronic and paper mail.</p>
 <p>If the program does terminal interaction, make it output a short notice like this when it starts in an interactive mode:</p>
-<pre><code>&lt;program&gt;  Copyright (C) &lt;year&gt;  &lt;name of author&gt;
+<pre><code>csgotrica  Copyright (C) 2020  Julian Chew McClellan
 This program comes with ABSOLUTELY NO WARRANTY; for details type `show w&#39;.
 This is free software, and you are welcome to redistribute it
 under certain conditions; type `show c&#39; for details.</code></pre>
