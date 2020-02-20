@@ -45,9 +45,9 @@ function importDemoBuffer (client, buffer, matchMapStatsID, callback) {
 
   var eventStream = client.query(copyFrom("COPY events (map_mms_id, tick, name, data, locations, entities) FROM STDIN WITH NULL 'null'"))
 
-  var tempDeferredFilename = 'tmp/deferred_' + Math.random() + '.tmp'
-  // var entityPropStream = fs.createWriteStream(tempDeferredFilename)
-  var entityPropStream = client.query(copyFrom("COPY entity_props (map_mms_id, index, tick, prop, value) FROM STDIN WITH NULL 'null'"))
+  var tempDeferredFilename = './tmp/deferred_' + Math.random() + '.tmp'
+  var entityPropStream = fs.createWriteStream(tempDeferredFilename)
+  // var entityPropStream = client.query(copyFrom("COPY entity_props (map_mms_id, index, tick, prop, value) FROM STDIN WITH NULL 'null'"))
 
   /**
    * Find the entity index of a user ID
@@ -131,23 +131,23 @@ function importDemoBuffer (client, buffer, matchMapStatsID, callback) {
       Promise.promisify(eventStream.end, { context: eventStream })(),
       Promise.promisify(entityPropStream.end, { context: entityPropStream })()
     ])
-      // .then(() => {
-    // console.log('Copying entity property data to database...')
-    //
-    // return Promise.promisify(done => {
-    // var stream = client.query(copyFrom("COPY entity_props (map_mms_id, index, tick, prop, value) FROM STDIN WITH NULL 'null'"))
-    // var fileStream = fs.createReadStream(tempDeferredFilename)
-    //
-    // fileStream.on('error', done)
-    //
-    // fileStream.pipe(stream)
-    // .on('finish', () => {
-    // console.log(`Copied entity_props. ${matchMapStatsID}|`)
-    // fs.unlink(tempDeferredFilename, done)
-    // })
-    // .on('error', done)
-    // })()
-      // })
+      .then(() => {
+        console.log('Copying entity property data to database...')
+
+        return Promise.promisify(done => {
+          var stream = client.query(copyFrom("COPY entity_props (map_mms_id, index, tick, prop, value) FROM STDIN WITH NULL 'null'"))
+          var fileStream = fs.createReadStream(tempDeferredFilename)
+
+          fileStream.on('error', done)
+
+          fileStream.pipe(stream)
+            .on('finish', () => {
+              console.log(`Copied entity_props. ${matchMapStatsID}|`)
+              fs.unlink(tempDeferredFilename, done)
+            })
+            .on('error', done)
+        })()
+      })
       .then(() => {
         // console.log(`All streams closed. ${matchMapStatsID}|`);
         console.timeEnd('demo.parse')
@@ -484,7 +484,7 @@ function importMatchWrap (match, matchStats) {
 
 async function importDemoWithMeta (path, matchMapStats, matchMapStatsID, match) {
   return new Promise((resolve, reject) => {
-    if ([92587, 92569, 92180, 92172].includes(matchMapStatsID)) { // TODO(jcm): identify invalid input json syntax here. pull request saul/demofile if warranted.
+    if ([].includes(matchMapStatsID)) { // TODO(jcm): identify invalid input json syntax here. pull request saul/demofile if warranted.
       resolve(false)
     } else {
       db.sync(syncOpts)

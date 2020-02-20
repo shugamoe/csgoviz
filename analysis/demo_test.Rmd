@@ -19,7 +19,6 @@ sessions <- dbGetQuery(con, 'select * FROM sessions')
 # )
 ```
 
-
 ```{r event_types}
 library(ggplot2)
 library(dplyr)

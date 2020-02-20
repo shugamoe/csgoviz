@@ -12,7 +12,6 @@ plan <- drake_plan(
   raw_data = dbGetQuery(con, 'select * FROM events'),
   hist = create_plot(raw_data),
 )
-
 config <- drake_config(plan)
 vis_drake_graph(config)
 
