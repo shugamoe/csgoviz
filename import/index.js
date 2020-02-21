@@ -27,9 +27,12 @@ async function downloadDay (dateStr, options) {
   var problemImports = []
   var concurDL = 0 // TODO(jcm): Change to array to track mms/match ids.
   var curImport = 0
-  // TODO(jcm): Have restart functionality in case the catch blocks are
-  // encountered (happens after a while? Use basic recursive fn or something)
+
   var matchesStats = await getMatchesStats(dateStr, dateStr)
+  if (matchesStats === null) {
+    console.log(`Error retrieving matchesStats for ${dateStr}. Skipping`)
+    return null
+  }
   console.log(`${matchesStats.length} results for ${dateStr}`)
   var numMapImports = 0
   var mapsInDb = 0
@@ -54,8 +57,16 @@ async function downloadDay (dateStr, options) {
     }
 
     var matchMapStats = await getMatchMapStats(matchStats)
+    if (matchMapStats === null) {
+      console.log(`Error retrieving matchMapStats, skipping ${matchStats.id}|`)
+      return null
+    }
     var mapDate = moment(matchMapStats.date).format('YYYY-MM-DD h:mm ZZ')
     var match = await getMatch(matchStats, matchMapStats.matchPageID)
+    if (match === null) {
+      console.log(`Error retreiving match skipping. . . ${matchStats.id}|${matchMapStats.matchPageID}`)
+      return null
+    }
 
     var dbHasMatch = await checkDbForMatch(matchStats, match)
     // If missing the match from DB, import the match
@@ -221,7 +232,7 @@ async function downloadDay (dateStr, options) {
 async function downloadDays (startDateStr, endDateStr) {
   var startDate = moment(startDateStr)
   var endDate = moment(endDateStr)
-  var deltaDays = moment.duration(endDate.diff(startDate)).days()
+  var deltaDays = Math.round(moment.duration(endDate.diff(startDate)).asDays())
   var addDays = Array.from(Array(deltaDays + 1).keys()) // so we can use forEach
 
   // addDays.forEach(async (days) => {
@@ -241,4 +252,4 @@ var lookback = 6 // months
 var start = moment(moment.now()).add(-6, 'M').format('YYYY-MM-DD')
 // TODO(jcm): Maybe something to archive older data?
 
-auditDB()// .then(res => downloadDays('2019-09-01', today.format('YYYY-MM-DD')))
+downloadDays('2019-09-01', '2019-12-31')

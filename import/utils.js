@@ -14,6 +14,7 @@ const { RateLimiterMemory, RateLimiterQueue } = require('rate-limiter-flexible')
 const { Op } = require('sequelize')
 const MapDict = require('./maps.json')
 const { importDemo } = require('./import.js')
+const defaultRetries = 2
 
 const queryRLM = new RateLimiterMemory({
   points: 1,
@@ -38,7 +39,7 @@ async function extractArchive (archPath, targetDir, matchID) {
 
 async function getMatchesStats (startDate, endDate, numRetries) {
   if (numRetries === undefined) {
-    numRetries = 1
+    numRetries = defaultRetries
   }
 
   try {
@@ -65,7 +66,7 @@ async function getMatchesStats (startDate, endDate, numRetries) {
 
 async function getMatchMapStats (matchStats, numRetries) {
   if (numRetries === undefined) {
-    numRetries = 1
+    numRetries = defaultRetries
   }
   var mapDate
   if (typeof (matchStats) === 'number') {
@@ -107,7 +108,7 @@ async function getMatch (matchStats, matchId, numRetries) {
     mapDate = moment(matchStats.date).format('YYYY-MM-DD h:mm:ss ZZ')
   }
   if (numRetries === undefined) {
-    numRetries = 1
+    numRetries = defaultRetries
   }
 
   try {
