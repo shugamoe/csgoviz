@@ -30,7 +30,7 @@ var moment = require('moment')
  * @param {number} map_id - New map ID
  * @param callback
  */
-function importDemoBuffer (client, buffer, matchMapStatsID, callback) {
+function importDemoBuffer (client, buffer, matchMapStatsID, options, callback) {
   var demo = new demofile.DemoFile()
   // var pace;
   var players = new Array(256)
@@ -118,9 +118,11 @@ function importDemoBuffer (client, buffer, matchMapStatsID, callback) {
   demo.on('tickend', tick => {
     // pace.op(tick);
 
+    if (options.entityProps === true){
     // if we've moved back in time, or the interval has elapsed, flush entity updates
-    if ((demo.currentTick - lastEntityUpdateFlushTick) * tickInterval > ENTITY_UPDATE_TIME_INTERVAL || demo.currentTick < lastEntityUpdateFlushTick) {
-      flushAccumulatedEntityUpdates()
+      if ((demo.currentTick - lastEntityUpdateFlushTick) * tickInterval > ENTITY_UPDATE_TIME_INTERVAL || demo.currentTick < lastEntityUpdateFlushTick) {
+        flushAccumulatedEntityUpdates()
+      }
     }
   })
 
@@ -132,7 +134,7 @@ function importDemoBuffer (client, buffer, matchMapStatsID, callback) {
       Promise.promisify(entityPropStream.end, { context: entityPropStream })()
     ])
       .then(() => {
-        console.log('Copying entity property data to database...')
+        // console.log('Copying entity property data to database...')
 
         return Promise.promisify(done => {
           var stream = client.query(copyFrom("COPY entity_props (map_mms_id, index, tick, prop, value) FROM STDIN WITH NULL 'null'"))
@@ -140,12 +142,16 @@ function importDemoBuffer (client, buffer, matchMapStatsID, callback) {
 
           fileStream.on('error', done)
 
-          fileStream.pipe(stream)
-            .on('finish', () => {
-              console.log(`Copied entity_props. ${matchMapStatsID}|`)
-              fs.unlink(tempDeferredFilename, done)
-            })
-            .on('error', done)
+          if (options.entityProps === true){
+            fileStream.pipe(stream)
+              .on('finish', () => {
+                console.log(`Copied entity_props. ${matchMapStatsID}|`)
+                fs.unlink(tempDeferredFilename, done)
+              })
+              .on('error', done)
+          } else {
+            fs.unlink(tempDeferredFilename, done)
+          }
         })()
       })
       .then(() => {
@@ -169,78 +175,80 @@ function importDemoBuffer (client, buffer, matchMapStatsID, callback) {
     return ((cell * (1 << CELL_BITS)) - MAX_COORD_INTEGER) + f
   }
 
-  demo.entities.on('change', e => {
-    if (skipProps.indexOf(e.varName) !== -1) {
-      return
-    }
-
-    assert(e.newValue != null)
-
-    var fullPropName = `${e.tableName}.${e.varName}`
-    var newValue = e.newValue
-
-    if (['DT_BaseEntity.m_vecOrigin', 'DT_BaseEntity.m_cellX', 'DT_BaseEntity.m_cellY', 'DT_BaseEntity.m_cellZ'].indexOf(fullPropName) !== -1) {
-      fullPropName = 'position'
-
-      var cellX = e.entity.getProp('DT_BaseEntity', 'm_cellX')
-      var cellY = e.entity.getProp('DT_BaseEntity', 'm_cellY')
-      var cellZ = e.entity.getProp('DT_BaseEntity', 'm_cellZ')
-      var cellPos = e.entity.getProp('DT_BaseEntity', 'm_vecOrigin')
-
-      if ([cellX, cellY, cellZ, cellPos].indexOf(undefined) !== -1) {
+  if (options.entityProps === true){
+    demo.entities.on('change', e => {
+      if (skipProps.indexOf(e.varName) !== -1) {
         return
       }
 
-      newValue = {
-        x: coordFromCell(cellX, cellPos.x),
-        y: coordFromCell(cellY, cellPos.y),
-        z: coordFromCell(cellZ, cellPos.z)
+      assert(e.newValue != null)
+
+      var fullPropName = `${e.tableName}.${e.varName}`
+      var newValue = e.newValue
+
+      if (['DT_BaseEntity.m_vecOrigin', 'DT_BaseEntity.m_cellX', 'DT_BaseEntity.m_cellY', 'DT_BaseEntity.m_cellZ'].indexOf(fullPropName) !== -1) {
+        fullPropName = 'position'
+
+        var cellX = e.entity.getProp('DT_BaseEntity', 'm_cellX')
+        var cellY = e.entity.getProp('DT_BaseEntity', 'm_cellY')
+        var cellZ = e.entity.getProp('DT_BaseEntity', 'm_cellZ')
+        var cellPos = e.entity.getProp('DT_BaseEntity', 'm_vecOrigin')
+
+        if ([cellX, cellY, cellZ, cellPos].indexOf(undefined) !== -1) {
+          return
+        }
+
+        newValue = {
+          x: coordFromCell(cellX, cellPos.x),
+          y: coordFromCell(cellY, cellPos.y),
+          z: coordFromCell(cellZ, cellPos.z)
+        }
+
+        entityPositions[e.entity.index] = newValue
+      } else if (fullPropName === 'DT_CSLocalPlayerExclusive.m_vecOrigin') {
+        fullPropName = 'position'
+
+        var z = e.entity.getProp('DT_CSLocalPlayerExclusive', 'm_vecOrigin[2]')
+        if (z == null) {
+          return
+        }
+
+        newValue = {
+          x: e.newValue.x,
+          y: e.newValue.y,
+          z
+        }
+
+        entityPositions[e.entity.index] = newValue
+      } else if (fullPropName === 'DT_CSLocalPlayerExclusive.m_vecOrigin[2]') {
+        fullPropName = 'position'
+
+        var xyPos = e.entity.getProp('DT_CSLocalPlayerExclusive', 'm_vecOrigin')
+        if (xyPos == null) {
+          return
+        }
+
+        newValue = {
+          x: xyPos.x,
+          y: xyPos.y,
+          z: e.newValue
+        }
+
+        entityPositions[e.entity.index] = newValue
       }
 
-      entityPositions[e.entity.index] = newValue
-    } else if (fullPropName === 'DT_CSLocalPlayerExclusive.m_vecOrigin') {
-      fullPropName = 'position'
+      // var updateHash = XXHash.hash(new Buffer(e.entity.index + fullPropName), 0xCAFEBABE);
+      var updateHash = XXHash.hash(Buffer.from(e.entity.index + fullPropName), 0xCAFEBABE)
 
-      var z = e.entity.getProp('DT_CSLocalPlayerExclusive', 'm_vecOrigin[2]')
-      if (z == null) {
-        return
-      }
-
-      newValue = {
-        x: e.newValue.x,
-        y: e.newValue.y,
-        z
-      }
-
-      entityPositions[e.entity.index] = newValue
-    } else if (fullPropName === 'DT_CSLocalPlayerExclusive.m_vecOrigin[2]') {
-      fullPropName = 'position'
-
-      var xyPos = e.entity.getProp('DT_CSLocalPlayerExclusive', 'm_vecOrigin')
-      if (xyPos == null) {
-        return
-      }
-
-      newValue = {
-        x: xyPos.x,
-        y: xyPos.y,
-        z: e.newValue
-      }
-
-      entityPositions[e.entity.index] = newValue
-    }
-
-    // var updateHash = XXHash.hash(new Buffer(e.entity.index + fullPropName), 0xCAFEBABE);
-    var updateHash = XXHash.hash(Buffer.from(e.entity.index + fullPropName), 0xCAFEBABE)
-
-    bufferedEntityUpdates.set(updateHash, [
-      matchMapStatsID,
-      e.entity.index,
-      demo.currentTick,
-      fullPropName,
-      { value: newValue }
-    ])
-  })
+      bufferedEntityUpdates.set(updateHash, [
+        matchMapStatsID,
+        e.entity.index,
+        demo.currentTick,
+        fullPropName,
+        { value: newValue }
+      ])
+    })
+  }
 
   demo.gameEvents.on('event', e => {
     var entities = {}
@@ -302,10 +310,12 @@ function importDemoBuffer (client, buffer, matchMapStatsID, callback) {
       anyEntities ? entities : null
     ])
 
+    if (options.entityProps === true){
     // if this event referenced any entities, flush all accumulated updates
     // TODO: we should only flush updates for affected entities
-    if (anyEntities) {
-      flushAccumulatedEntityUpdates()
+      if (anyEntities) {
+        flushAccumulatedEntityUpdates()
+      }
     }
   })
 
@@ -326,7 +336,7 @@ function importDemoBuffer (client, buffer, matchMapStatsID, callback) {
  * @param {string} path - Path to demo file
  * @returns {Promise}
  */
-function importDemoFile (path, matchMapStats, matchMapStatsID, match) {
+function importDemoFile (path, matchMapStats, matchMapStatsID, match, options) {
   var commitFail
   // console.log('Connecting to database...');
   var matchDate = moment(match.date).format('YYYY-MM-DD h:mm ZZ')
@@ -377,21 +387,11 @@ function importDemoFile (path, matchMapStats, matchMapStatsID, match) {
 
     // Import the buffer into the DB
     .spread((client, buffer, _, query) => {
-      return Promise.promisify(importDemoBuffer)(client, buffer, query.rows[0].mms_id)
+      return Promise.promisify(importDemoBuffer)(client, buffer, query.rows[0].mms_id, options)
     })
 
-  // .then(() => {
-  // var num_maps = match.maps.filter(ms => ms.statsId > 0).length
-  // return  query('INSERT INTO matches (match_id, date, data, maps) VALUES ($1, $2, $3, $4)', [
-  // match.id,
-  // new Date(match.date).toUTCString(),
-  // JSON.stringify(match),
-  // num_maps
-  // ])
-  // })
-
     .then(() => {
-      // console.log(`${matchMapStatsID}|${match.id} committing transaction...`);
+      console.log(`\t${matchMapStatsID}|${match.id} committing transaction...`);
       commitFail = false
       return query('COMMIT')
     })
@@ -400,7 +400,7 @@ function importDemoFile (path, matchMapStats, matchMapStatsID, match) {
       console.error(e.stack)
 
       // console.log(`${matchMapStatsID}|${match.id} committing transaction...`);
-      console.log(`ERROR!! Rolling back... ${matchMapStatsID}|${match.id}|${matchDate}`)
+      console.log(`\tERROR!! Rolling back... ${matchMapStatsID}|${match.id}|${matchDate}`)
       commitFail = true
       return query('ROLLBACK')
     })
@@ -409,7 +409,7 @@ function importDemoFile (path, matchMapStats, matchMapStatsID, match) {
       var matchDate = moment(match.date).format('YYYY-MM-DD h:mm ZZ')
       client.end()
       if (commitFail === true) {
-        console.log(`Map table import fail. ${matchMapStatsID}|${match.id}|${matchDate}`)
+        console.log(`\tMap table import fail. ${matchMapStatsID}|${match.id}|${matchDate}`)
         return false
       } else {
         console.log(`\tImported to Map table. ${matchMapStatsID}|${match.id}|${matchDate}`)
@@ -482,14 +482,14 @@ function importMatchWrap (match, matchStats) {
   })
 }
 
-async function importDemoWithMeta (path, matchMapStats, matchMapStatsID, match) {
+async function importDemoWithMeta (path, matchMapStats, matchMapStatsID, match, options) {
   return new Promise((resolve, reject) => {
     if ([].includes(matchMapStatsID)) { // TODO(jcm): identify invalid input json syntax here. pull request saul/demofile if warranted.
       resolve(false)
     } else {
       db.sync(syncOpts)
         .then(() => {
-          importDemoFile(path, matchMapStats, matchMapStatsID, match).then(res => resolve(res))
+          importDemoFile(path, matchMapStats, matchMapStatsID, match, options).then(res => resolve(res))
             .catch(e => reject(e))
         })
     }

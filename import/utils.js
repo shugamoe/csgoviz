@@ -13,7 +13,7 @@ var db = require('./db.js')
 const { RateLimiterMemory, RateLimiterQueue } = require('rate-limiter-flexible')
 const { Op } = require('sequelize')
 const MapDict = require('./maps.json')
-const { importDemo } = require('./import.js')
+const { importDemo } = require('./demoHandler.js')
 const defaultRetries = 2
 
 const queryRLM = new RateLimiterMemory({
@@ -213,7 +213,8 @@ async function auditDB (options) {
   if (options === undefined) {
     options = {
       maxImports: 1,
-      maxDLs: 2
+      maxDLs: 2,
+      entityProps: false
     }
   }
   // Find matches that are missing maps. matches.maps_played is the number of
@@ -300,7 +301,7 @@ async function auditDB (options) {
 
       // curImport = importMatchMapStatsID + '|' + res.data.id
       curImport += 1
-      var demoImportSuccess = await importDemo(matchContent.outDir + demo, importMatchMapStats, importMatchMapStatsID, res.data)
+      var demoImportSuccess = await importDemo(matchContent.outDir + demo, importMatchMapStats, importMatchMapStatsID, res.data, options)
       // curImport = ''
       curImport -= 1
       auditMapImports += demoImportSuccess
@@ -339,7 +340,8 @@ async function downloadMatch (match, matchMapStatsID, concurDL) {
         }
 
         var demos = files.filter(f => f.substr(f.length - 3) === 'dem')
-        if (demos.length > 0) {
+        var mapsPlayed = match.maps.filter(ms => ms.statsId > 0).length // Ignore unplayed maps
+        if (demos.length === mapsPlayed) {
           console.log(`Extracted demos found. ${matchMapStatsID}|${match.id} `)
           resolve({
             outDir: outDir,

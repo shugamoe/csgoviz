@@ -1,6 +1,6 @@
 var Promise = require('bluebird')
 const MapDict = require('./maps.json')
-const { importDemo, importMatch } = require('./import.js')
+const { importDemo, importMatch } = require('./demoHandler.js')
 const { exec } = require('child_process')
 var moment = require('moment')
 const {
@@ -22,6 +22,7 @@ async function downloadDay (dateStr, options) {
     options = {}
     options.maxImports = 1
     options.maxDLs = 2
+    options.entityProps = false
   }
   var orphanMapStats = []
   var problemImports = []
@@ -187,7 +188,7 @@ async function downloadDay (dateStr, options) {
 
       curImport += 1
       var demoImportSuccess = await importDemo(matchContent.outDir + demo, importMatchMapStats, importMatchMapStatsID,
-        match
+        match, options
       )
       curImport -= 1
       numMapImports += demoImportSuccess
@@ -229,7 +230,7 @@ async function downloadDay (dateStr, options) {
 }
 
 // Rudimentary function to download a lot of days
-async function downloadDays (startDateStr, endDateStr) {
+async function downloadDays(startDateStr, endDateStr, options) {
   var startDate = moment(startDateStr)
   var endDate = moment(endDateStr)
   var deltaDays = Math.round(moment.duration(endDate.diff(startDate)).asDays())
@@ -238,7 +239,7 @@ async function downloadDays (startDateStr, endDateStr) {
   // addDays.forEach(async (days) => {
   await asyncForEach(addDays, async (days) => {
     var dlDate = moment(startDateStr).add(days, 'd').format('YYYY-MM-DD')
-    await downloadDay(dlDate)
+    await downloadDay(dlDate, options)
   })
 }
 
@@ -252,4 +253,5 @@ var lookback = 6 // months
 var start = moment(moment.now()).add(-6, 'M').format('YYYY-MM-DD')
 // TODO(jcm): Maybe something to archive older data?
 
-downloadDays('2019-09-01', '2019-12-31')
+downloadDays('2019-09-01', today)
+// auditDB()

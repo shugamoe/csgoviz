@@ -8,7 +8,7 @@ const options = {
   maxConcurrentQueries: 100,
   native: false,
   define: {
-    timestamps: true,
+    timestamps: false, // Extra columns in tables for created and udpated
     underscored: true
   },
   pool: { maxConnections: 10, maxIdleTime: 30 }

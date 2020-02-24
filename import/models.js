@@ -132,7 +132,7 @@ var Match = db.define('match', {
 )
 
 Maptable.hasMany(Event, { allowNull: false, onDelete: 'cascade' })
-Maptable.hasMany(EntityProp, { allowNull: false, onDelete: 'cascade' })
+Maptable.hasMany(EntityProp, { allowNull: true /* entityprops can get pretty huge */, onDelete: 'cascade' })
 Match.hasMany(Maptable, { allowNull: true, foreignKey: 'match_id' })
 
 module.exports = {
