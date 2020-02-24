@@ -137,12 +137,11 @@ function importDemoBuffer (client, buffer, matchMapStatsID, options, callback) {
         // console.log('Copying entity property data to database...')
 
         return Promise.promisify(done => {
-          var stream = client.query(copyFrom("COPY entity_props (map_mms_id, index, tick, prop, value) FROM STDIN WITH NULL 'null'"))
-          var fileStream = fs.createReadStream(tempDeferredFilename)
-
-          fileStream.on('error', done)
-
           if (options.entityProps === true){
+            var stream = client.query(copyFrom("COPY entity_props (map_mms_id, index, tick, prop, value) FROM STDIN WITH NULL 'null'"))
+            var fileStream = fs.createReadStream(tempDeferredFilename)
+
+            fileStream.on('error', done)
             fileStream.pipe(stream)
               .on('finish', () => {
                 console.log(`Copied entity_props. ${matchMapStatsID}|`)
