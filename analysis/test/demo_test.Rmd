@@ -12,8 +12,8 @@ library(DBI)
 
 con <- dbConnect(RPostgres::Postgres(), user = "gamevis", password = "gamevis")
 
-events <- dbGetQuery(con, 'select * FROM events')
-sessions <- dbGetQuery(con, 'select * FROM sessions')
+# events <- dbGetQuery(con, 'select * FROM events')
+# sessions <- dbGetQuery(con, 'select * FROM sessions')
 # entity_props <- as.data.table(
 #   dbGetQuery(con, 'select * FROM entity_props')
 # )
@@ -51,6 +51,7 @@ events.player_death <- as.data.table(
   SELECT * 
   FROM events
   WHERE name = 'player_death'
+  AND map_mms_id = 92791
   ORDER BY tick
   ;
   ")
@@ -65,6 +66,7 @@ events.player_spawn <- as.data.table(
   SELECT *
   FROM events
   WHERE name = 'player_spawn'
+  AND map_mms_id = 92791
   ORDER BY tick
   ;
              ")
@@ -88,6 +90,7 @@ events.phase.changes <- as.data.table(
   SELECT *
   FROM events
   WHERE name IN ('round_start', 'round_freeze_end', 'bomb_planted', 'bomb_exploded', 'bomb_defused', 'round_end')
+  AND map_mms_id = 92791
   ORDER BY tick, name
   ; ")
 ) %>%
